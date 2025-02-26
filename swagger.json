@@ -1,0 +1,93 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Veramo API",
+    "version": "1.0.0",
+    "description": "API documentation for Veramo-based DID and credential management"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local server"
+    }
+  ],
+  "paths": {
+    "/dids/{did}": {
+      "get": {
+        "summary": "Resolve a DID",
+        "description": "Fetches the DID Document for the given DID.",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Decentralized Identifier (DID) to resolve"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DID Document retrieved successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": { "id": "did:cheqd:example" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DID format",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": "Invalid DID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/notifications": {
+      "post": {
+        "summary": "Receive webhook notifications",
+        "description": "Handles webhook notifications from external sources.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "event": "DID updated",
+                "data": { "did": "did:cheqd:example" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook received successfully"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ]
+}

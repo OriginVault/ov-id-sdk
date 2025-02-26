@@ -1,0 +1,88 @@
+{
+  "name": "@originvault/ov-id-sdk",
+  "version": "0.0.1",
+  "organization": "originvault",
+  "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
+  "main": "./dist/index.js",
+  "type": "module",
+  "files": [
+    "dist/**/*",
+    "dist/proto/**/*",
+    "service.proto"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "tsc": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf ./dist/",
+    "cm": "cz",
+    "lint": "eslint ./src/ --fix",
+    "prepare": "husky install",
+    "test:watch": "jest --watch",
+    "test": "jest --coverage",
+    "typecheck": "tsc --noEmit",
+    "prestart": "npm run tsc",
+    "start": "node dist/src/index.js",
+    "prepublish": "npm run build",
+    "publish": "npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OriginVault/ov-id-sdk.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0"
+  },
+  "keywords": [
+    "DID",
+    "well-known"
+  ],
+  "homepage": "https://www.originvault.io",
+  "dependencies": {
+    "@cheqd/did-provider-cheqd": "^4.4.1",
+    "@cosmjs/tendermint-rpc": "^0.33.0",
+    "@veramo/core": "^6.0.0",
+    "@veramo/core-types": "^6.0.0",
+    "@veramo/credential-w3c": "^6.0.0",
+    "@veramo/data-store": "^6.0.0",
+    "@veramo/did-resolver": "^6.0.0",
+    "@veramo/kms-local": "^6.0.0",
+    "@veramo/remote-server": "^6.0.0",
+    "@verida/did-client": "^4.4.1",
+    "bip39": "^3.1.0",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "firebase-admin": "^13.1.0",
+    "helmet": "^8.0.0",
+    "keytar": "^7.9.0",
+    "node-fetch": "^3.3.2",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@ryansonshine/commitizen": "^4.2.8",
+    "@ryansonshine/cz-conventional-changelog": "^3.3.4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^10.0.0",
+    "conventional-changelog-conventionalcommits": "^5.0.0",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "husky": "^6.0.0",
+    "jest": "^27.2.0",
+    "lint-staged": "^13.2.1",
+    "prettier": "^3.3.3",
+    "semantic-release": "^21.0.1",
+    "ts-node": "^10.2.1",
+    "typescript": "~5.6.2",
+    "typescript-eslint": "^8.11.0"
+  },
+  "lint-staged": {
+    "*.ts": "eslint --cache --cache-location .eslintcache --fix"
+  }
+}
