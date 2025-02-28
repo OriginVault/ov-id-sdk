@@ -105,7 +105,7 @@ console.log("Domain-Verified DID:", domainDID);
 - **[Verida DID](https://verida.io/)** → Identity-backed data storage  
 - **[Veramo](https://veramo.io/)** → Web5-native identity agent  
 - **[W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)** → Open trust standards  
-- **[Keytar](https://github.com/atom/node-keytar)** → OS keychain-based secure storage  
+- **[Polkadot Keyring](https://polkadot.js.org/docs/api/start/keyring/)** → Secure, in-memory key management for DIDs
 
 ---
 
