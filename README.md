@@ -117,7 +117,6 @@ console.log("Domain-Verified DID:", domainDID);
 ## 🚀 Next Steps
 - [ ] Add **multi-user key management**
 - [ ] Support **additional DID methods**
-- [ ] Implement **passphrase-protected keys**
 - [ ] Provide **browser-compatible secure storage**
 
 ---
