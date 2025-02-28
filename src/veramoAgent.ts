@@ -9,17 +9,10 @@ import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver'
 
-export declare enum Network {
-    LOCAL = "local",
-    DEVNET = "devnet",
-    BANKSIA = "banksia",
-    MYRTLE = "myrtle"
-}
-
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
 
 const veridaDidClient = new DIDClient({
-  network: process.env.NODE_ENV === 'development' ? Network.LOCAL : Network.BANKSIA,
+  network: process.env.NODE_ENV === 'development' ? 'local' : 'banksia' as any,
   rpcUrl: process.env.VDA_RPC_URL || 'https://rpc.verida.net',
 });
 
@@ -53,8 +46,8 @@ export const agent = createAgent<IResolver>({
       providers: {
         'did:cheqd': new CheqdDIDProvider({
           defaultKms: 'local',
-          dkgOptions: { chain: process.env.NODE_ENV === 'development' ? 'cheqdTestnet' : 'cheqdMainnet' },
-          rpcUrl: process.env.CHEQD_RPC_URL || (process.env.NODE_ENV === 'development' ? 'https://cheqd-testnet.rpc.extrnode.com' : 'https://cheqd.originvault.io'),
+          dkgOptions: { chain: 'cheqdMainnet' },
+          rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.io',
           cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
         }),
         'did:key': new KeyDIDProvider({
@@ -63,8 +56,8 @@ export const agent = createAgent<IResolver>({
       }
     }),
     new DIDResolverPlugin({ 
-      ...universalResolver,
       resolver: new Resolver({
+        ...universalResolver,
         'did:vda': VeridaResolver.resolve,
       })
     }),

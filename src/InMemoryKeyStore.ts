@@ -1,6 +1,6 @@
 import { AbstractPrivateKeyStore, ManagedPrivateKey, ImportablePrivateKey } from '@veramo/key-manager';
 import { MemoryDIDStore } from '@veramo/did-manager';
-import { storePrivateKey, retrievePrivateKey } from './storePrivateKeys';
+import { storePrivateKey, retrievePrivateKey } from './storePrivateKeys.js';
 
 export class InMemoryKeyStore extends MemoryDIDStore implements AbstractPrivateKeyStore {
   async importKey(args: ImportablePrivateKey): Promise<ManagedPrivateKey> {
