@@ -1,14 +1,12 @@
 {
   "name": "@originvault/ov-id-sdk",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha.16",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
-  "main": "./dist/index.js",
+  "main": "./dist/src/index.js",
   "type": "module",
   "files": [
-    "dist/**/*",
-    "dist/proto/**/*",
-    "service.proto"
+    "dist/**/*"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
@@ -16,7 +14,6 @@
     "clean": "rm -rf ./dist/",
     "cm": "cz",
     "lint": "eslint ./src/ --fix",
-    "prepare": "husky install",
     "test:watch": "jest --watch",
     "test": "jest --coverage",
     "typecheck": "tsc --noEmit",
@@ -40,7 +37,15 @@
   "homepage": "https://www.originvault.io",
   "dependencies": {
     "@cheqd/did-provider-cheqd": "^4.4.1",
+    "@cosmjs/proto-signing": "^0.33.0",
     "@cosmjs/tendermint-rpc": "^0.33.0",
+    "@noble/ed25519": "^2.2.3",
+    "@noble/hashes": "^1.7.1",
+    "@polkadot/api": "^15.7.1",
+    "@polkadot/keyring": "^13.4.3",
+    "@polkadot/util": "^13.4.3",
+    "@polkadot/util-crypto": "^13.4.3",
+    "@scure/bip39": "^1.5.4",
     "@veramo/core": "^6.0.0",
     "@veramo/core-types": "^6.0.0",
     "@veramo/credential-w3c": "^6.0.0",
@@ -51,7 +56,6 @@
     "@verida/did-client": "^4.4.1",
     "bip39": "^3.1.0",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
@@ -59,7 +63,8 @@
     "helmet": "^8.0.0",
     "keytar": "^7.9.0",
     "node-fetch": "^3.3.2",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@ryansonshine/commitizen": "^4.2.8",
@@ -73,7 +78,6 @@
     "eslint": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
-    "husky": "^6.0.0",
     "jest": "^27.2.0",
     "lint-staged": "^13.2.1",
     "prettier": "^3.3.3",
