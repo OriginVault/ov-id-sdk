@@ -1,14 +1,13 @@
 import { createAgent } from '@veramo/core';
 import { DIDManager, MemoryDIDStore } from '@veramo/did-manager';
 import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { CredentialPlugin, CredentialIssuer } from '@veramo/credential-w3c';
+import { CredentialPlugin } from '@veramo/credential-w3c';
 import { KeyManagementSystem } from '@veramo/kms-local';
 import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver';
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
-import { DataStore, DataStoreORM } from '@veramo/data-store';
 
 import dotenv from 'dotenv';
 
@@ -66,6 +65,5 @@ export const agent = createAgent({
             })
         }),
         new CredentialPlugin(),
-        new CredentialIssuer(),
     ],
 }); 

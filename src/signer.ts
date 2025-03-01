@@ -1,5 +1,6 @@
 import { agent } from './veramoAgent.js';
 import { verifyPrimaryDID } from './storePrivateKeys.js';
+import { getDevelopmentEnvironmentMetadata } from './environment.js';
 
 export async function signVC(subject: any, password): Promise<any> {
     try {
@@ -8,11 +9,14 @@ export async function signVC(subject: any, password): Promise<any> {
 
         if(!did) return false;
 
+        const environment = getDevelopmentEnvironmentMetadata();
+
         const signedVC = await agent.createVerifiableCredential({
             credential: {
                 issuer: { id: did },
                 credentialSubject: {
                     id: did,
+                    environment,
                     ...subject
                 },
                 '@context': ['https://www.w3.org/2018/credentials/v1'],

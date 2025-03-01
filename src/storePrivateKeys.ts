@@ -6,67 +6,18 @@ import path from 'path';
 import { agent } from './veramoAgent.js';
 import * as ed25519 from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
-import * as bip39 from 'bip39';
-import { wordlist } from '@scure/bip39/wordlists/english';
 import multibase from 'multibase';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { v5 as uuidv5 } from 'uuid'; // Import the uuid library
 import { encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import { encryptData } from './dataManager.js';
+import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
+import { getDevelopmentEnvironmentMetadata } from './environment.js';
 
 dotenv.config();
 
 ed25519.etc.sha512Sync = sha512;
-
-async function convertRecoveryToPrivateKey(mnemonic) {
-    try {
-      const entropy = bip39.mnemonicToEntropy(mnemonic, wordlist)
-      const privateKey = Buffer.from(entropy, 'hex');
-
-      const privateKeyBase64 = async () => {
-        const publicKey = await ed25519.getPublicKey(privateKey);
-
-        // Step 3: Concatenate private and public keys
-        const fullKey = Buffer.concat([privateKey, publicKey]);
-
-        return fullKey.toString('base64');
-      }
-
-      return privateKeyBase64();
-    } catch (error) {
-        console.error("Error converting recovery phrase:", error);
-        throw error;
-    }
-}
-
-export async function convertPrivateKeyToRecovery(privateKey) {
-    try {
-        // Decode base64 private key to Uint8Array
-        const decodedKey = Buffer.from(privateKey, 'base64');
-        
-        if (!(decodedKey instanceof Uint8Array)) {
-            throw new Error("Private key is not a Uint8Array");
-        }
-
-        console.log("🔑 Private Key (Hex):", Buffer.from(decodedKey).toString('hex'));
-
-        // Validate private key length
-        if (decodedKey.length !== 64) {
-            throw new Error(`Invalid private key length: Expected 64 bytes, got ${decodedKey.length}`);
-        }
-
-        // Extract the private key (first 32 bytes)
-        const privateKeySlice = decodedKey.subarray(0, 32);
-
-        // Convert private key to mnemonic
-        const mnemonic = bip39.entropyToMnemonic(privateKeySlice, wordlist);
-
-        return mnemonic;
-    } catch (error) {
-        console.error("❌ Error converting private key to recovery phrase:", error);
-        throw error;
-    }
-}
 
 // Initialize keyring
 let keyring: Keyring | undefined;
@@ -127,7 +78,7 @@ const getPublicKeyMultibase = async (did: string) => {
 }
 
 // ✅ Set the primary DID (User Defined or Domain Verified)
-export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean> {
+export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean | any> {
     if (!privateKey) {
         console.error("❌ Private key must be provided to set primary DID");
         return false;
@@ -154,6 +105,40 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             console.error("❌ Private key does not match the public key in DID document");
             return false;
         }
+
+        const verificationSteps: DIDAssertionCredentialSubject['verificationSteps'] = [
+            {
+                step: "Get public key multibase from resolved DID",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert private key from base64 to Uint8Array",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Derive public key from private key",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert derived public key to base64",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert public key multibase to buffer and remove prefix",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },      
+            {
+                step: "Convert sliced public key to base64 for comparison",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            }
+        ];
+
         console.log("✅ Private key verified against resolved DID");
         // Add the key pair to the keyring using the raw private key
         const pair = kr.addFromSeed(privateKeySub, { did, isPrimary: true });
@@ -176,17 +161,71 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             });
             console.log("✅ DID successfully imported into Veramo.");
 
-              // ✅ Encrypt and store the private key
+            const credentialId = uuidv5(did + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
+            const credential: DIDAssertionCredential = {
+                id: credentialId,
+                issuer: { id: did },
+                credentialSubject: {
+                    id: did,
+                    assertionType: "did-key-verification",
+                    assertionDate: new Date().toISOString(),
+                    assertionResult: 'Passed',
+                    verificationSteps,
+                },
+                '@context': ['https://www.w3.org/2018/credentials/v1'],
+                type: ['VerifiableCredential'],
+                expirationDate: new Date().toISOString()
+            };
+
+            const signedVC = await agent.createVerifiableCredential({
+                credential,
+                proofFormat: 'jwt'
+            });
+
+            console.log("✅ Signed VC", signedVC);
+
+            const environmentMetadata = await getDevelopmentEnvironmentMetadata();
+
+            const environmentCredential: DIDAssertionCredential = {
+                id: credentialId,
+                issuer: { id: did },
+                credentialSubject: {
+                    id: did,
+                    assertionType: "environment-metadata",
+                    assertionDate: new Date().toISOString(),
+                    assertionDetails: environmentMetadata,
+                    assertionResult: 'Passed',
+                    verificationSteps: [
+                        {
+                            step: "Get development environment metadata using read-package-json-fast & process.env",
+                            result: 'Passed',
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
+                },
+                '@context': ['https://www.w3.org/2018/credentials/v1'],
+                type: ['VerifiableCredential'],
+                expirationDate: new Date().toISOString()
+            };
+
+            const signedEnvironmentVC = await agent.createVerifiableCredential({
+                credential: environmentCredential,
+                proofFormat: 'jwt'
+            });
+
+            console.log("✅ Signed Environment VC", signedEnvironmentVC);
+            
+            // ✅ Encrypt and store the private key
             const encryptedPrivateKey = encryptPrivateKey(privateKey, password);
 
             const storedKeys = {
                 encryptedPrivateKey,
-                meta: { did, isPrimary: true }
+                meta: { did, isPrimary: true, didCredential: signedVC, environmentCredential: signedEnvironmentVC },
             };
 
             fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
 
-            return true;
+            return signedVC;
         } catch (error) {
             console.error("❌ Failed to import DID into Veramo:", error);
             return false;
@@ -199,18 +238,22 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 
 // ✅ Retrieve the primary DID
 export async function getPrimaryDID(): Promise<string | null> {
+    console.log('developmentEnvironmentMetadata', await getDevelopmentEnvironmentMetadata())
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs();
         const primaryPair = pairs.find(p => p.meta?.isPrimary);
         const did = (primaryPair?.meta?.did || '') as string;
-
+        
         if(did) return did;
         
         try {
             const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
             const { meta } = JSON.parse(storedData);
-            if(meta) return meta.did;
+            if(!meta) return null;
+            const { did, credential } = meta;
+            if(!credential) return null;
+            if(did) return did;
         } catch (error) {
             console.error("❌ Error accessing keyring. File may not exist",);
             return null;
@@ -235,17 +278,11 @@ export async function getPrimaryDID(): Promise<string | null> {
 export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
     try {
         console.log("🔑 Verifying Primary DID", password);
-        const kr = await ensureKeyring();
-        const pairs = kr.getPairs();
-        const primaryPair = pairs.find(p => p.meta?.isPrimary);
-        let did = (primaryPair?.meta?.did || '') as string;
-
-        if(did) return did;
-
         const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
         const { encryptedPrivateKey, meta } = JSON.parse(storedData);
         if(!encryptedPrivateKey) return false;
-        did = meta.did;
+        
+        const did = meta.did;
         console.log("🔑 Did", storedData);
         const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
         if (!privateKey) {
@@ -386,4 +423,35 @@ function base64ToHex(base64) {
     });
 
     return hexString;
+}
+
+// Define the setPrimaryVc function
+export function setPrimaryVc(signedVC: any) {
+    // Log the signed VC
+    console.log("Setting primary VC:", signedVC);
+
+    // Example: Store the signed VC in a file
+    const vcFilePath = path.join(os.homedir(), 'primary-vc.json');
+    try {
+        fs.writeFileSync(vcFilePath, JSON.stringify(signedVC, null, 2));
+        console.log("✅ Primary VC stored successfully at", vcFilePath);
+    } catch (error) {
+        console.error("❌ Error storing primary VC:", error);
+    }
+}
+
+// ✅ Retrieve the primary VC
+export async function getPrimaryVC(): Promise<any | null> {
+    try {
+        const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
+        const { meta } = JSON.parse(storedData);
+        if (meta && meta.credential) {
+            return meta.credential; // Return the signed VC
+        }
+        console.error("❌ No primary VC found in keyring.");
+        return null;
+    } catch (error) {
+        console.error("❌ Error accessing keyring:", error);
+        return null;
+    }
 }
