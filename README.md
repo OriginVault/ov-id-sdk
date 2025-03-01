@@ -9,7 +9,7 @@
 `@originvault/ov-id-sdk` is a **TypeScript SDK** for managing **decentralized identities (DIDs)** and **verifiable credentials (VCs)** within the **OriginVault ecosystem**. It enables developers to create, import, and manage **DIDs**, securely store private keys, and sign/verify credentials using **Web5-native identity standards**.
 
 ## 🔹 Features
-✅ **DID Creation & Import** → Generate or restore `did:cheqd` and `did:vda` identities  
+✅ **DID Creation & Import** → Generate or restore `did:cheqd` identities •Coming Soon•
 ✅ **Secure Key Storage** → Uses **OS keychain encryption (`keytar`)** instead of environment variables  
 ✅ **Primary DID Management** → Automatically selects a **default DID for signing**  
 ✅ **Verifiable Credential Signing & Verification** → Issue & verify **W3C-compliant credentials**  
@@ -109,13 +109,12 @@ console.log("Development Environment:", environment);
 | **Environment Variable** | **Description** |
 |------------------|-----------------------------------------------|
 | `DID_DOMAIN` | (Optional) Domain to fetch `.well-known/did-configuration.json` |
-| `DID_METHOD` | (Optional) Default DID method (`cheqd` or `vda`) |
+| `DID_METHOD` | (Optional) Default DID method (`cheqd`) |
 
 ---
 
 ## 🏗 Built With
 - **[Cheqd DID SDK](https://docs.cheqd.io/)** → DID creation & verification  
-- **[Verida DID](https://verida.io/)** → Identity-backed data storage  
 - **[Veramo](https://veramo.io/)** → Web5-native identity agent  
 - **[W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)** → Open trust standards  
 - **[Polkadot Keyring](https://polkadot.js.org/docs/api/start/keyring/)** → Secure, in-memory key management for DIDs
