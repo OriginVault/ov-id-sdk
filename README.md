@@ -1,3 +1,8 @@
+<div style="width: 100%; display: flex; justify-content: center; align-items: center;">
+      <img src="https://gray-objective-tiglon-784.mypinata.cloud/ipfs/Qma7EjPPPfomzEKkYcJa2ctEFPUhHaMwiojTR1wTQPg2x8" alt="OriginVault logo" width="300" height="300">
+</div>
+<br />
+
 # 🚀 `@originvault/ov-id-sdk`
 **Decentralized Identity SDK for OriginVault**
 
@@ -92,6 +97,14 @@ console.log("Domain-Verified DID:", domainDID);
 
 ---
 
+### **6️⃣ Get Development Environment Metadata**
+```typescript
+import { getDevelopmentEnvironmentMetadata } from "@originvault/ov-id-sdk";
+
+const environment = getDevelopmentEnvironmentMetadata();
+console.log("Development Environment:", environment);
+```
+
 ## 🛠 Configuration
 | **Environment Variable** | **Description** |
 |------------------|-----------------------------------------------|
@@ -105,7 +118,7 @@ console.log("Domain-Verified DID:", domainDID);
 - **[Verida DID](https://verida.io/)** → Identity-backed data storage  
 - **[Veramo](https://veramo.io/)** → Web5-native identity agent  
 - **[W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)** → Open trust standards  
-- **[Keytar](https://github.com/atom/node-keytar)** → OS keychain-based secure storage  
+- **[Polkadot Keyring](https://polkadot.js.org/docs/api/start/keyring/)** → Secure, in-memory key management for DIDs
 
 ---
 
@@ -117,7 +130,6 @@ console.log("Domain-Verified DID:", domainDID);
 ## 🚀 Next Steps
 - [ ] Add **multi-user key management**
 - [ ] Support **additional DID methods**
-- [ ] Implement **passphrase-protected keys**
 - [ ] Provide **browser-compatible secure storage**
 
 ---

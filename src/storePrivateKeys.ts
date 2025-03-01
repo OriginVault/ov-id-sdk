@@ -77,6 +77,7 @@ const getPublicKeyMultibase = async (did: string) => {
     return publicKeyMultibase;
 }
 
+
 // ✅ Set the primary DID (User Defined or Domain Verified)
 export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean | any> {
     if (!privateKey) {
@@ -238,7 +239,6 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 
 // ✅ Retrieve the primary DID
 export async function getPrimaryDID(): Promise<string | null> {
-    console.log('developmentEnvironmentMetadata', await getDevelopmentEnvironmentMetadata())
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs();
