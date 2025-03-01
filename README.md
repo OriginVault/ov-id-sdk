@@ -9,7 +9,7 @@
 `@originvault/ov-id-sdk` is a **TypeScript SDK** for managing **decentralized identities (DIDs)** and **verifiable credentials (VCs)** within the **OriginVault ecosystem**. It enables developers to create, import, and manage **DIDs**, securely store private keys, and sign/verify credentials using **Web5-native identity standards**.
 
 ## 🔹 Features
-✅ **DID Creation & Import** → Generate or restore `did:cheqd` identities •Coming Soon•
+✅ **DID Creation & Import** → Generate or restore `did:cheqd` identities •Coming Soon•  
 ✅ **Secure Key Storage** → Uses **OS keychain encryption (`keytar`)** instead of environment variables  
 ✅ **Primary DID Management** → Automatically selects a **default DID for signing**  
 ✅ **Verifiable Credential Signing & Verification** → Issue & verify **W3C-compliant credentials**  
