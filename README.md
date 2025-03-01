@@ -97,6 +97,14 @@ console.log("Domain-Verified DID:", domainDID);
 
 ---
 
+### **6️⃣ Get Development Environment Metadata**
+```typescript
+import { getDevelopmentEnvironmentMetadata } from "@originvault/ov-id-sdk";
+
+const environment = getDevelopmentEnvironmentMetadata();
+console.log("Development Environment:", environment);
+```
+
 ## 🛠 Configuration
 | **Environment Variable** | **Description** |
 |------------------|-----------------------------------------------|
