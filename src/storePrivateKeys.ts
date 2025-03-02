@@ -78,9 +78,27 @@ const getPublicKeyMultibase = async (did: string) => {
     return publicKeyMultibase;
 }
 
+// ✅ Ensure the keyring file exists
+function ensureKeyringFileExists() {
+    if (!fs.existsSync(KEYRING_FILE)) {
+        fs.writeFileSync(KEYRING_FILE, JSON.stringify({ meta: {} }, null, 2)); // Create an empty keyring file
+        console.log("✅ Keyring file created:", KEYRING_FILE);
+    }
+}
+
+// ✅ Ensure the password file exists
+function ensurePasswordFileExists() {
+    const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+    if (!fs.existsSync(passwordFilePath)) {
+        fs.writeFileSync(passwordFilePath, JSON.stringify("")); // Create an empty password file
+        console.log("✅ Password file created:", passwordFilePath);
+    }
+}
 
 // ✅ Set the primary DID (User Defined or Domain Verified)
 export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean | any> {
+    ensureKeyringFileExists(); // Ensure keyring file exists
+    ensurePasswordFileExists(); // Ensure password file exists
     if (!privateKey) {
         console.error("❌ Private key must be provided to set primary DID");
         return false;
@@ -480,17 +498,13 @@ export async function getPrimaryVC(): Promise<any | null> {
 
 // Function to retrieve and decrypt the password
 export function getStoredPassword(): string | null {
-    try {
-        const encryptionKey = process.env.ENCRYPTION_KEY;
-        if (!encryptionKey) {
-            throw new Error("Encryption key not found in environment variables");
-        }
+    ensurePasswordFileExists();
+    const passwordFilePath = path.resolve(process.env.PASSWORD_FILE_PATH || '/home/lukenispel/.encrypted-password');
 
-        const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
-        const encryptedPassword = JSON.parse(fs.readFileSync(passwordFilePath, 'utf8'));
-        return decryptPrivateKey(encryptedPassword, encryptionKey);
+    try {
+        return fs.readFileSync(passwordFilePath, 'utf8').trim();
     } catch (error) {
-        console.error("❌ Error retrieving stored password:", error);
+        console.error(`❌ Error retrieving stored password: ${error}`);
         return null;
     }
 }

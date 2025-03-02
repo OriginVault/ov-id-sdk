@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { createHash } from 'crypto';
 import { getCertDir } from '../src/config';
 import { getStoredPassword } from '../src/storePrivateKeys';
+import readline from 'readline'; // Import readline
 
 dotenv.config();
 
@@ -36,7 +37,7 @@ function cleanupOldCommits() {
     }
 }
 
-async function generateCommitMetadata(commitHash: string) {
+async function generateCommitMetadata(commitHash) {
     const developerDID = process.env.DEV_DID || 'did:example:developer'; // Replace with actual DID resolution
 
     const metadata = {
@@ -46,7 +47,7 @@ async function generateCommitMetadata(commitHash: string) {
         commit: {
             hash: commitHash,
             message: execSync(`git log -1 --pretty=%B ${commitHash}`).toString().trim(),
-            author: execSync(`git log -1 --pretty=%an <%ae> ${commitHash}`).toString().trim(),
+            author: execSync(`git log -1 --pretty=format:"%an <%ae>" ${commitHash}`).toString().trim(),
             timestamp: execSync(`git log -1 --pretty=%aI ${commitHash}`).toString().trim(),
         },
         environment: {
@@ -58,7 +59,7 @@ async function generateCommitMetadata(commitHash: string) {
     return metadata;
 }
 
-async function storeMinimalMetadata(commitHash: string, signedMetadata: any) {
+async function storeMinimalMetadata(commitHash, signedMetadata) {
     const metadataString = JSON.stringify(signedMetadata);
     const metadataHash = createHash('sha256').update(metadataString).digest('hex');
 
@@ -72,12 +73,24 @@ async function storeMinimalMetadata(commitHash: string, signedMetadata: any) {
 (async () => {
     try {
         const commitHash = execSync('git rev-parse HEAD').toString().trim();
+        console.log(`🔍 Commit hash: ${commitHash}`);
         const metadata = await generateCommitMetadata(commitHash);
         
         // Retrieve the stored password
-        const storedPassword = getStoredPassword();
+        let storedPassword = getStoredPassword();
         if (!storedPassword) {
-            throw new Error("Password not found");
+            // Prompt for password if not found
+            const rl = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+
+            storedPassword = await new Promise((resolve) => {
+                rl.question("Password not found. Please enter your password: ", (password) => {
+                    rl.close();
+                    resolve(password);
+                });
+            });
         }
 
         // Sign the metadata using DID
