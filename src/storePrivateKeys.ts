@@ -14,6 +14,7 @@ import { encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import { encryptData } from './dataManager.js';
 import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
 import { getDevelopmentEnvironmentMetadata } from './environment.js';
+import { encrypt, decrypt } from './utils/encryption'; // Import the encryption utilities
 
 dotenv.config();
 
@@ -184,47 +185,68 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             });
 
             console.log("✅ Signed VC", signedVC);
-
-            const environmentMetadata = await getDevelopmentEnvironmentMetadata();
-
-            const environmentCredential: DIDAssertionCredential = {
-                id: credentialId,
-                issuer: { id: did },
-                credentialSubject: {
-                    id: did,
-                    assertionType: "environment-metadata",
-                    assertionDate: new Date().toISOString(),
-                    assertionDetails: environmentMetadata,
-                    assertionResult: 'Passed',
-                    verificationSteps: [
-                        {
-                            step: "Get development environment metadata using read-package-json-fast & process.env",
-                            result: 'Passed',
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
-                },
-                '@context': ['https://www.w3.org/2018/credentials/v1'],
-                type: ['VerifiableCredential'],
-                expirationDate: new Date().toISOString()
-            };
-
-            const signedEnvironmentVC = await agent.createVerifiableCredential({
-                credential: environmentCredential,
-                proofFormat: 'jwt'
-            });
-
-            console.log("✅ Signed Environment VC", signedEnvironmentVC);
             
             // ✅ Encrypt and store the private key
             const encryptedPrivateKey = encryptPrivateKey(privateKey, password);
 
-            const storedKeys = {
-                encryptedPrivateKey,
-                meta: { did, isPrimary: true, didCredential: signedVC, environmentCredential: signedEnvironmentVC },
-            };
+            if(process.env.NODE_ENV === 'development') {
+                const environmentMetadata = await getDevelopmentEnvironmentMetadata();
 
-            fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
+                const environmentCredential: DIDAssertionCredential = {
+                    id: credentialId,
+                    issuer: { id: did },
+                    credentialSubject: {
+                        id: did,
+                        assertionType: "environment-metadata",
+                        assertionDate: new Date().toISOString(),
+                        assertionDetails: environmentMetadata,
+                        assertionResult: 'Passed',
+                        verificationSteps: [
+                            {
+                                step: "Get development environment metadata using read-package-json-fast & process.env",
+                                result: 'Passed',
+                                timestamp: new Date().toISOString()
+                            }
+                        ]
+                    },
+                    '@context': ['https://www.w3.org/2018/credentials/v1'],
+                    type: ['VerifiableCredential'],
+                    expirationDate: new Date().toISOString()
+                };
+
+                const signedEnvironmentVC = await agent.createVerifiableCredential({
+                    credential: environmentCredential,
+                    proofFormat: 'jwt'
+                });
+
+                console.log("✅ Signed Environment VC", signedEnvironmentVC);
+
+                const storedKeys = {
+                    encryptedPrivateKey,
+                    meta: { did, isPrimary: true, didCredential: signedVC, environmentCredential: signedEnvironmentVC },
+                };
+
+                fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
+            } else {
+                const storedKeys = {
+                    encryptedPrivateKey,
+                    meta: { did, isPrimary: true, didCredential: signedVC },
+                };
+
+                fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
+            }
+
+            const encryptionKey = process.env.ENCRYPTION_KEY;
+            if (!encryptionKey) {
+                throw new Error("Encryption key not found in environment variables");
+            }
+
+            // Encrypt the password
+            const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+
+            // Store the encrypted password in a file
+            const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+            fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
 
             return signedVC;
         } catch (error) {
@@ -452,6 +474,23 @@ export async function getPrimaryVC(): Promise<any | null> {
         return null;
     } catch (error) {
         console.error("❌ Error accessing keyring:", error);
+        return null;
+    }
+}
+
+// Function to retrieve and decrypt the password
+export function getStoredPassword(): string | null {
+    try {
+        const encryptionKey = process.env.ENCRYPTION_KEY;
+        if (!encryptionKey) {
+            throw new Error("Encryption key not found in environment variables");
+        }
+
+        const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+        const encryptedPassword = JSON.parse(fs.readFileSync(passwordFilePath, 'utf8'));
+        return decryptPrivateKey(encryptedPassword, encryptionKey);
+    } catch (error) {
+        console.error("❌ Error retrieving stored password:", error);
         return null;
     }
 }
