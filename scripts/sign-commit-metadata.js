@@ -5,7 +5,6 @@ import path from 'path';
 import os from 'os';
 import { signVC } from '../src/signer'; // Updated to match previous code
 import dotenv from 'dotenv';
-import { createHash } from 'crypto';
 import { getCertDir } from '../src/config';
 import { getStoredPassword } from '../src/storePrivateKeys';
 import { getPrimaryDID } from '../src/storePrivateKeys'; // Import getPrimaryDID

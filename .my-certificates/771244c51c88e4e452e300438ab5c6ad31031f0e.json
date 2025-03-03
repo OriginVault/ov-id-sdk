@@ -5,7 +5,7 @@
       "operatingSystem": "linux 5.15.153.1-microsoft-standard-WSL2"
     },
     "issuer": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9",
-    "issued": "2025-03-03T01:34:02.804Z",
+    "issued": "2025-03-03T01:42:03.504Z",
     "commit": {
       "hash": "771244c51c88e4e452e300438ab5c6ad31031f0e",
       "message": "add environment signing",
@@ -23,9 +23,9 @@
   "@context": [
     "https://www.w3.org/2018/credentials/v1"
   ],
-  "issuanceDate": "2025-03-03T01:34:03.000Z",
+  "issuanceDate": "2025-03-03T01:42:03.000Z",
   "proof": {
     "type": "JwtProof2020",
-    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwMTozNDowMi44MDRaIiwiY29tbWl0Ijp7Imhhc2giOiI3NzEyNDRjNTFjODhlNGU0NTJlMzAwNDM4YWI1YzZhZDMxMDMxZjBlIiwibWVzc2FnZSI6ImFkZCBlbnZpcm9ubWVudCBzaWduaW5nIiwiYXV0aG9yIjoibG5pc3BlbCA8bG5pc3BlbEBtZS5jb20-IiwidGltZXN0YW1wIjoiMjAyNS0wMi0yOFQyMzoxNDozMi0wODowMCJ9fX0sInN1YiI6InVybjpvdi1jb21taXQ6NzcxMjQ0YzUxYzg4ZTRlNDUyZTMwMDQzOGFiNWM2YWQzMTAzMWYwZSIsIm5iZiI6MTc0MDk2NTY0MywiaXNzIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5In0.FE50GdL6QDyj479oPq2Owi4hgIrP7OIG51C28MewbwI2NQz1aNqGLxNtfdh7jVUctFGZ2TLG696G6hUXjoNxBg"
+    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwMTo0MjowMy41MDRaIiwiY29tbWl0Ijp7Imhhc2giOiI3NzEyNDRjNTFjODhlNGU0NTJlMzAwNDM4YWI1YzZhZDMxMDMxZjBlIiwibWVzc2FnZSI6ImFkZCBlbnZpcm9ubWVudCBzaWduaW5nIiwiYXV0aG9yIjoibG5pc3BlbCA8bG5pc3BlbEBtZS5jb20-IiwidGltZXN0YW1wIjoiMjAyNS0wMi0yOFQyMzoxNDozMi0wODowMCJ9fX0sInN1YiI6InVybjpvdi1jb21taXQ6NzcxMjQ0YzUxYzg4ZTRlNDUyZTMwMDQzOGFiNWM2YWQzMTAzMWYwZSIsIm5iZiI6MTc0MDk2NjEyMywiaXNzIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5In0.LCVBRyjykXei2Xrku7JsqzWHDW1H4Kj3UXbwSe0w98jtZWVlQnDb965ePDq61pAipCGpw2J1-_rhis9RUGf-Cg"
   }
 }
