@@ -5,6 +5,7 @@ import * as StorePrivateKeys from './storePrivateKeys.js';
 import * as IdentityManager from './identityManager.js'; 
 import * as Encryption from './encryption.js';
 import * as Environment from './environment.js';
+import * as ReleaseManager from './releaseManager.js';
 
 export * from './veramoAgent.js';
 export * from './resolver.js';
@@ -13,6 +14,7 @@ export * from './storePrivateKeys.js';
 export * from './identityManager.js';
 export * from './encryption.js';
 export * from './environment.js';
+export * from './releaseManager.js';
 
 export const OvId = {
     agent: VeramoAgent,
@@ -22,5 +24,6 @@ export const OvId = {
     identityManager: IdentityManager,
     encryption: Encryption,
     environment: Environment,
+    releaseManager: ReleaseManager,
 }
 
