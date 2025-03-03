@@ -6,23 +6,28 @@
 # 🚀 `@originvault/ov-id-sdk`
 **Decentralized Identity SDK for OriginVault**
 
-`@originvault/ov-id-sdk` is a **TypeScript SDK** for managing **decentralized identities (DIDs)** and **verifiable credentials (VCs)** within the **OriginVault ecosystem**. It enables developers to create, import, and manage **DIDs**, securely store private keys, and sign/verify credentials and commits using **Web5-native identity standards**.
+`@originvault/ov-id-sdk` a TypeScript SDK for decentralized identity (DID) management, verifiable credential (VC) signing and verification, and cryptographic commit signing. It enables secure DID operations, private key management, W3C-compliant credential handling, and signed commits/releases with verifiable metadata.
 
-## 🔹 Features
-✅ **DID Creation & Import** → Generate or restore `did:cheqd` and `did:vda` identities  
-✅ **Secure Key Storage** → Uses **OS keychain encryption (`keytar`)** instead of environment variables  
-✅ **Primary DID Management** → Automatically selects a **default DID for signing**  
-✅ **Commit & Release Signing** → Sign commits and releases with the developer's DID  
-✅ **Verifiable Credential Signing & Verification** → Issue & verify **W3C-compliant credentials**  
-✅ **Domain-Linked DID Discovery** → Auto-fetches the authoritative DID from `.well-known/did-configuration.json`  
-✅ **Built with OV** → Designed to integrate seamlessly into **OriginVault's Web5 trust layer**  
+🔹 Features
 
+- ✅ DID Creation & Import → Generate or restore did:cheqd and did:vda identities
+- ✅ Secure Key Storage → Encrypt and store private keys securely, retrieve when needed
+- ✅ Primary DID Management → Set and retrieve the default DID for signing credentials
+- ✅ Verifiable Credential Signing & Verification → Issue & verify W3C-compliant credentials
+- ✅ Cryptographic Commit & Release Signing → Sign and verify Git commits & software releases using DID credentials
+- ✅ Development Environment Metadata → Capture system & package metadata for auditability
+- ✅ Domain-Linked DID Discovery → Auto-fetch the authoritative DID from .well-known/did-configuration.json
+- ✅ Web5 Trust Layer Integration → Designed for OriginVault’s decentralized identity and verification ecosystem
 ---
 
 ## 📦 Installation
 ```bash
 npm install @originvault/ov-id-sdk
 ```
+
+## [Example Release Cert](https://github.com/OriginVault/ov-id-sdk/blob/main/.my-certificates/@originvault/ov-id-sdk-0.0.1-alpha.23-2025-03-03T05%EF%80%BA14%EF%80%BA01.454Z.json)
+
+
 
 ---
 
