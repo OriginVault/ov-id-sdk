@@ -9,6 +9,8 @@ import { getCertDir } from '../src/config.js';
 import { getStoredPassword } from '../src/storePrivateKeys.js';
 import { getPrimaryDID } from '../src/storePrivateKeys.js'; // Import getPrimaryDID
 import readline from 'readline'; // Import readline
+import tar from 'tar'; // Import tar
+import { createHash } from 'crypto';
 
 dotenv.config();
 
@@ -35,8 +37,39 @@ function cleanupOldCommits() {
     }
 }
 
+// Create a tarball of the entire package at the time of publish
+export async function createCommitBundle(commitHash) {
+    const bundlePath = path.join(CERT_DIR, `${commitHash}.tar.gz`);
+    
+    // Get all files in the repository
+    const allFiles = execSync('git ls-files')
+        .toString()
+        .trim()
+        .split('\n');
+
+    if (allFiles.length === 0) {
+        throw new Error(`❌ No files found in the repository for commit ${commitHash}`);
+    }
+
+    await tar.create(
+        { gzip: true, file: bundlePath, cwd: process.cwd() },
+        allFiles
+    );
+
+    return bundlePath;
+}
+
+// Compute SHA-256 hash of the tarball
+export function computeBundleHash(bundlePath) {
+    const bundleContent = fs.readFileSync(bundlePath);
+    return createHash('sha256').update(bundleContent).digest('hex');
+}
+
+// Generate commit metadata
 async function generateCommitMetadata(commitHash) {
-    const developerDID = await getPrimaryDID(); // Use getPrimaryDID to get the issuer
+    const developerDID = await getPrimaryDID();
+    const bundlePath = await createCommitBundle(commitHash);
+    const bundleHash = computeBundleHash(bundlePath);
 
     const metadata = {
         id: `urn:ov-commit:${commitHash}`,
@@ -48,6 +81,7 @@ async function generateCommitMetadata(commitHash) {
             author: execSync(`git log -1 --pretty=format:"%an <%ae>" ${commitHash}`).toString().trim(),
             timestamp: execSync(`git log -1 --pretty=%aI ${commitHash}`).toString().trim(),
         },
+        bundleHash, // Include the bundle hash
         environment: {
             nodeVersion: process.version,
             operatingSystem: `${os.platform()} ${os.release()}`,

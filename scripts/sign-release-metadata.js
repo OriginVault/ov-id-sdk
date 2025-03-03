@@ -8,6 +8,7 @@ import readline from 'readline';
 import { getStoredPassword, getPrimaryDID } from '../src/storePrivateKeys.js';
 import os from 'os';
 import { createHash } from 'crypto';
+import { createCommitBundle, computeBundleHash } from './sign-commit-metadata.js';
 
 dotenv.config();
 
@@ -93,15 +94,20 @@ async function signRelease() {
             const metadataHash = createHash('sha256').update(JSON.stringify(signedMetadata)).digest('hex');
             commitsMetadata.push({ commitHash, metadataHash });
         }
-        
+
+        // Create a bundle of the package and compute its hash
+        const bundlePath = await createCommitBundle(commits[0]); // Assuming the first commit for the bundle
+        const bundleHash = computeBundleHash(bundlePath);
+
         const releaseMetadata = {
             id: `urn:ov-release:${new Date().toISOString()}`,
             issuer: developerDID,
             issued: new Date().toISOString(),
             commits: commitsMetadata,
             package: {
-                name: JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).name,
+                name: packageJson.name,
                 version: execSync('npm pkg get version').toString().trim().replace(/"/g, ''),
+                bundleHash: bundleHash // Add the bundle hash to the release metadata
             }
         };
 
