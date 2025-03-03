@@ -5,7 +5,7 @@
       "operatingSystem": "linux 5.15.153.1-microsoft-standard-WSL2"
     },
     "issuer": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9",
-    "issued": "2025-03-03T04:37:24.166Z",
+    "issued": "2025-03-03T05:14:02.782Z",
     "commit": {
       "hash": "b36b7a3311449ff8949823f6b2bfc88dbe455cb7",
       "message": "Merge pull request #4 from OriginVault/sign-commits\n\nSign commits",
@@ -23,9 +23,9 @@
   "@context": [
     "https://www.w3.org/2018/credentials/v1"
   ],
-  "issuanceDate": "2025-03-03T04:37:24.000Z",
+  "issuanceDate": "2025-03-03T05:14:02.000Z",
   "proof": {
     "type": "JwtProof2020",
-    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwNDozNzoyNC4xNjZaIiwiY29tbWl0Ijp7Imhhc2giOiJiMzZiN2EzMzExNDQ5ZmY4OTQ5ODIzZjZiMmJmYzg4ZGJlNDU1Y2I3IiwibWVzc2FnZSI6Ik1lcmdlIHB1bGwgcmVxdWVzdCAjNCBmcm9tIE9yaWdpblZhdWx0L3NpZ24tY29tbWl0c1xuXG5TaWduIGNvbW1pdHMiLCJhdXRob3IiOiJMdWtlIE5pc3BlbCA8bG5pc3BlbEBtZS5jb20-IiwidGltZXN0YW1wIjoiMjAyNS0wMy0wMlQxODoyNToyNS0wODowMCJ9fX0sInN1YiI6InVybjpvdi1jb21taXQ6YjM2YjdhMzMxMTQ0OWZmODk0OTgyM2Y2YjJiZmM4OGRiZTQ1NWNiNyIsIm5iZiI6MTc0MDk3NjY0NCwiaXNzIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5In0.3jTl46qBfz2z2UUA2EUm_gp5qk7zZuBeNcsL_OC3O0DPP9kryBwVRZLH6HvrG4fB2-1Uv2eM4jDsSYBZJY9EBQ"
+    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwNToxNDowMi43ODJaIiwiY29tbWl0Ijp7Imhhc2giOiJiMzZiN2EzMzExNDQ5ZmY4OTQ5ODIzZjZiMmJmYzg4ZGJlNDU1Y2I3IiwibWVzc2FnZSI6Ik1lcmdlIHB1bGwgcmVxdWVzdCAjNCBmcm9tIE9yaWdpblZhdWx0L3NpZ24tY29tbWl0c1xuXG5TaWduIGNvbW1pdHMiLCJhdXRob3IiOiJMdWtlIE5pc3BlbCA8bG5pc3BlbEBtZS5jb20-IiwidGltZXN0YW1wIjoiMjAyNS0wMy0wMlQxODoyNToyNS0wODowMCJ9fX0sInN1YiI6InVybjpvdi1jb21taXQ6YjM2YjdhMzMxMTQ0OWZmODk0OTgyM2Y2YjJiZmM4OGRiZTQ1NWNiNyIsIm5iZiI6MTc0MDk3ODg0MiwiaXNzIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5In0.YEQFp_27aRfbKrIDjEYzHMSRgm9Y4_p7IYhkLRj5RiCCVkqZEwoOcCRu9ipz3i9hM5lsIQmK5J3HbHQpdGxCBQ"
   }
 }

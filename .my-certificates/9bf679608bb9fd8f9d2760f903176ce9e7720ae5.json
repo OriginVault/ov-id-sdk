@@ -5,7 +5,7 @@
       "operatingSystem": "linux 5.15.153.1-microsoft-standard-WSL2"
     },
     "issuer": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9",
-    "issued": "2025-03-03T04:37:26.952Z",
+    "issued": "2025-03-03T05:14:05.584Z",
     "commit": {
       "hash": "9bf679608bb9fd8f9d2760f903176ce9e7720ae5",
       "message": "Merge pull request #1 from OriginVault/add-private-key-storage",
@@ -23,9 +23,9 @@
   "@context": [
     "https://www.w3.org/2018/credentials/v1"
   ],
-  "issuanceDate": "2025-03-03T04:37:27.000Z",
+  "issuanceDate": "2025-03-03T05:14:05.000Z",
   "proof": {
     "type": "JwtProof2020",
-    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwNDozNzoyNi45NTJaIiwiY29tbWl0Ijp7Imhhc2giOiI5YmY2Nzk2MDhiYjlmZDhmOWQyNzYwZjkwMzE3NmNlOWU3NzIwYWU1IiwibWVzc2FnZSI6Ik1lcmdlIHB1bGwgcmVxdWVzdCAjMSBmcm9tIE9yaWdpblZhdWx0L2FkZC1wcml2YXRlLWtleS1zdG9yYWdlIiwiYXV0aG9yIjoiTHVrZSBOaXNwZWwgPGxuaXNwZWxAbWUuY29tPiIsInRpbWVzdGFtcCI6IjIwMjUtMDItMjhUMTI6NTg6NTMtMDg6MDAifX19LCJzdWIiOiJ1cm46b3YtY29tbWl0OjliZjY3OTYwOGJiOWZkOGY5ZDI3NjBmOTAzMTc2Y2U5ZTc3MjBhZTUiLCJuYmYiOjE3NDA5NzY2NDcsImlzcyI6ImRpZDpjaGVxZDptYWlubmV0Ojk3MjBlMWVmLTI3N2MtNTkzYS04NWI3LWM2M2M3MzUzMWJkOSJ9.0oZA2lNzH8vrwXP6_V_HLsvxPIXa8dRM-z2Z3XuxuhrMM81vvGEx1c_SFcnSki3SgPnmtIsl_vO0M1-F7fJrDw"
+    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwNToxNDowNS41ODRaIiwiY29tbWl0Ijp7Imhhc2giOiI5YmY2Nzk2MDhiYjlmZDhmOWQyNzYwZjkwMzE3NmNlOWU3NzIwYWU1IiwibWVzc2FnZSI6Ik1lcmdlIHB1bGwgcmVxdWVzdCAjMSBmcm9tIE9yaWdpblZhdWx0L2FkZC1wcml2YXRlLWtleS1zdG9yYWdlIiwiYXV0aG9yIjoiTHVrZSBOaXNwZWwgPGxuaXNwZWxAbWUuY29tPiIsInRpbWVzdGFtcCI6IjIwMjUtMDItMjhUMTI6NTg6NTMtMDg6MDAifX19LCJzdWIiOiJ1cm46b3YtY29tbWl0OjliZjY3OTYwOGJiOWZkOGY5ZDI3NjBmOTAzMTc2Y2U5ZTc3MjBhZTUiLCJuYmYiOjE3NDA5Nzg4NDUsImlzcyI6ImRpZDpjaGVxZDptYWlubmV0Ojk3MjBlMWVmLTI3N2MtNTkzYS04NWI3LWM2M2M3MzUzMWJkOSJ9.zuq-phljOPzG5V-vsnTq-oAWFL1E0HvyGSRkX2ihFadRv6hoAFMtd8wfs-T9dd3X1zvtkKuaxQwnyoGmlxxyAg"
   }
 }
