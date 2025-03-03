@@ -10,14 +10,14 @@
 
 🔹 Features
 
-✅ DID Creation & Import → Generate or restore did:cheqd and did:vda identities
-✅ Secure Key Storage → Encrypt and store private keys securely, retrieve when needed
-✅ Primary DID Management → Set and retrieve the default DID for signing credentials
-✅ Verifiable Credential Signing & Verification → Issue & verify W3C-compliant credentials
-✅ Cryptographic Commit & Release Signing → Sign and verify Git commits & software releases using DID credentials
-✅ Development Environment Metadata → Capture system & package metadata for auditability
-✅ Domain-Linked DID Discovery → Auto-fetch the authoritative DID from .well-known/did-configuration.json
-✅ Web5 Trust Layer Integration → Designed for OriginVault’s decentralized identity and verification ecosystem
+- ✅ DID Creation & Import → Generate or restore did:cheqd and did:vda identities
+- ✅ Secure Key Storage → Encrypt and store private keys securely, retrieve when needed
+- ✅ Primary DID Management → Set and retrieve the default DID for signing credentials
+- ✅ Verifiable Credential Signing & Verification → Issue & verify W3C-compliant credentials
+- ✅ Cryptographic Commit & Release Signing → Sign and verify Git commits & software releases using DID credentials
+- ✅ Development Environment Metadata → Capture system & package metadata for auditability
+- ✅ Domain-Linked DID Discovery → Auto-fetch the authoritative DID from .well-known/did-configuration.json
+- ✅ Web5 Trust Layer Integration → Designed for OriginVault’s decentralized identity and verification ecosystem
 ---
 
 ## 📦 Installation
