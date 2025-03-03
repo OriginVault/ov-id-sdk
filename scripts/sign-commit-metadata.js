@@ -3,11 +3,11 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { signVC } from '../src/signer'; // Updated to match previous code
+import { signVC } from '../src/signer.js'; // Updated to match previous code
 import dotenv from 'dotenv';
-import { getCertDir } from '../src/config';
-import { getStoredPassword } from '../src/storePrivateKeys';
-import { getPrimaryDID } from '../src/storePrivateKeys'; // Import getPrimaryDID
+import { getCertDir } from '../src/config.js';
+import { getStoredPassword } from '../src/storePrivateKeys.js';
+import { getPrimaryDID } from '../src/storePrivateKeys.js'; // Import getPrimaryDID
 import readline from 'readline'; // Import readline
 
 dotenv.config();

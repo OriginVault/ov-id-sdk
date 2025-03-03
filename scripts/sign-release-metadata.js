@@ -2,10 +2,10 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { signVC } from '../src/signer'; // Ensure this function signs with the developer's DID
-import { getCertDir } from '../src/config';
+import { signVC } from '../src/signer.js'; // Ensure this function signs with the developer's DID
+import { getCertDir } from '../src/config.js';
 import readline from 'readline';
-import { getStoredPassword, getPrimaryDID } from '../src/storePrivateKeys';
+import { getStoredPassword, getPrimaryDID } from '../src/storePrivateKeys.js';
 import os from 'os';
 import { createHash } from 'crypto';
 
