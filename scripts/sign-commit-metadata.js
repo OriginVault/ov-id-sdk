@@ -3,11 +3,12 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { signVC } from '../src/signer'; // Ensure this function signs with the developer's DID
+import { signVC } from '../src/signer'; // Updated to match previous code
 import dotenv from 'dotenv';
 import { createHash } from 'crypto';
 import { getCertDir } from '../src/config';
 import { getStoredPassword } from '../src/storePrivateKeys';
+import { getPrimaryDID } from '../src/storePrivateKeys'; // Import getPrimaryDID
 import readline from 'readline'; // Import readline
 
 dotenv.config();
@@ -18,8 +19,6 @@ const CERT_DIR = getCertDir();
 if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
 
 const MAX_COMMITS_TO_KEEP = 50; // Configurable
-
-const encryptionKey = process.env.ENCRYPTION_KEY;
 
 function cleanupOldCommits() {
     const files = fs.readdirSync(CERT_DIR)
@@ -38,7 +37,7 @@ function cleanupOldCommits() {
 }
 
 async function generateCommitMetadata(commitHash) {
-    const developerDID = process.env.DEV_DID || 'did:example:developer'; // Replace with actual DID resolution
+    const developerDID = await getPrimaryDID(); // Use getPrimaryDID to get the issuer
 
     const metadata = {
         id: `urn:ov-commit:${commitHash}`,
@@ -60,13 +59,10 @@ async function generateCommitMetadata(commitHash) {
 }
 
 async function storeMinimalMetadata(commitHash, signedMetadata) {
-    const metadataString = JSON.stringify(signedMetadata);
-    const metadataHash = createHash('sha256').update(metadataString).digest('hex');
-
     const certPath = path.join(CERT_DIR, `${commitHash}.json`);
-    fs.writeFileSync(certPath, JSON.stringify({ commitHash, metadataHash }, null, 2));
+    fs.writeFileSync(certPath, JSON.stringify({ commitHash, signedMetadata }, null, 2));
 
-    console.log(`✅ Stored minimal metadata: ${certPath}`);
+    console.log(`✅ Stored environment metadata: ${certPath}`);
 }
 
 // Run this on commit
@@ -78,7 +74,8 @@ async function storeMinimalMetadata(commitHash, signedMetadata) {
         
         // Retrieve the stored password
         let storedPassword = getStoredPassword();
-        if (!storedPassword) {
+
+        if (!storedPassword.length) {
             // Prompt for password if not found
             const rl = readline.createInterface({
                 input: process.stdin,

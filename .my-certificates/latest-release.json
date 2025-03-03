@@ -1,0 +1,179 @@
+{
+  "credentialSubject": {
+    "environment": {
+      "environment": "Node.js v23.1.0",
+      "packageJson": {
+        "name": "@originvault/ov-id-sdk",
+        "version": "0.0.1-alpha.20",
+        "organization": "originvault",
+        "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
+        "main": "./dist/src/index.js",
+        "type": "module",
+        "files": [
+          "dist/**/*"
+        ],
+        "scripts": {
+          "build": "tsc --project tsconfig.build.json",
+          "tsc": "tsc --project tsconfig.build.json",
+          "clean": "rm -rf ./dist/",
+          "cm": "cz",
+          "lint": "eslint ./src/ --fix",
+          "test:watch": "jest --watch",
+          "test": "jest --coverage",
+          "typecheck": "tsc --noEmit",
+          "prestart": "npm run tsc",
+          "start": "node dist/src/index.js",
+          "sign-commit": "npx tsx scripts/sign-commit-metadata.js",
+          "sign-release": "npx tsx scripts/sign-release-metadata.js",
+          "prepublish": "npm run build",
+          "publish": "npm publish",
+          "prepublishOnly": "node scripts/sign-release-metadata.js"
+        },
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/OriginVault/ov-id-sdk.git"
+        },
+        "license": "MIT",
+        "engines": {
+          "node": ">=20.0"
+        },
+        "keywords": [
+          "DID",
+          "well-known"
+        ],
+        "homepage": "https://www.originvault.io",
+        "dependencies": {
+          "@cheqd/did-provider-cheqd": "^4.4.1",
+          "@cosmjs/proto-signing": "^0.33.0",
+          "@cosmjs/tendermint-rpc": "^0.33.0",
+          "@noble/ed25519": "^2.2.3",
+          "@noble/hashes": "^1.7.1",
+          "@originvault/ov-types": "^0.0.1-alpha.13",
+          "@polkadot/api": "^15.7.1",
+          "@polkadot/keyring": "^13.4.3",
+          "@polkadot/util": "^13.4.3",
+          "@polkadot/util-crypto": "^13.4.3",
+          "@scure/bip39": "^1.5.4",
+          "@veramo/core": "^6.0.0",
+          "@veramo/core-types": "^6.0.0",
+          "@veramo/credential-w3c": "^6.0.0",
+          "@veramo/data-store": "^6.0.0",
+          "@veramo/did-resolver": "^6.0.0",
+          "@veramo/kms-local": "^6.0.0",
+          "@veramo/remote-server": "^6.0.0",
+          "@verida/did-client": "^4.4.1",
+          "bip39": "^3.1.0",
+          "cors": "^2.8.5",
+          "crypto": "^1.0.1",
+          "dotenv": "^16.4.7",
+          "express": "^4.21.2",
+          "express-rate-limit": "^7.5.0",
+          "node-fetch": "^3.3.2",
+          "read-package-json-fast": "^4.0.0",
+          "tweetnacl": "^1.0.3",
+          "uuid": "^11.1.0"
+        },
+        "devDependencies": {
+          "@ryansonshine/commitizen": "^4.2.8",
+          "@ryansonshine/cz-conventional-changelog": "^3.3.4",
+          "@types/bcryptjs": "^2.4.6",
+          "@types/express": "^5.0.0",
+          "@types/jest": "^27.5.2",
+          "@types/node": "^20.10.5",
+          "@types/uuid": "^10.0.0",
+          "conventional-changelog-conventionalcommits": "^5.0.0",
+          "eslint": "^9.13.0",
+          "eslint-config-prettier": "^9.1.0",
+          "eslint-plugin-prettier": "^5.2.1",
+          "jest": "^27.2.0",
+          "lint-staged": "^13.2.1",
+          "prettier": "^3.3.3",
+          "semantic-release": "^21.0.1",
+          "ts-node": "^10.2.1",
+          "typescript": "~5.6.2",
+          "typescript-eslint": "^8.11.0"
+        },
+        "lint-staged": {
+          "*.ts": "eslint --cache --cache-location .eslintcache --fix"
+        },
+        "_id": "@originvault/ov-id-sdk@0.0.1-alpha.20"
+      },
+      "timestamp": "2025-03-03T00:33:00.454Z",
+      "commitHash": "516ade5aca782a31ea9efdd273bc4d0a9e3a0a2c",
+      "operatingSystem": "linux 5.15.153.1-microsoft-standard-WSL2",
+      "hostname": "9dc156e6ab4e9e2b801f1a841a38bb76025c8e83ef18a28543f5289889b2c770",
+      "ipAddress": "178a880810e4095d68505e77f35bc939ebde4d9a4c13dbc357ad3b35803bdaf1"
+    },
+    "issuer": null,
+    "issued": "2025-03-03T00:32:53.175Z",
+    "commits": [
+      {
+        "commitHash": "516ade5aca782a31ea9efdd273bc4d0a9e3a0a2c",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "55dd3298b040c4578ece39d4a01c160d7bd1d42e",
+        "metadataHash": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+      },
+      {
+        "commitHash": "5b7995c1067ee43b40a3d27c722629ddf01f7293",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "771244c51c88e4e452e300438ab5c6ad31031f0e",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "34482a430715947bbccf4bd87b0e72bfd099a9cf",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "fa77bd1cc5a8203900c6c78151fbd3a0d1345933",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "043bee4d043ab04c3489702f3c1d8e94573dab2f",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "51382d28bfb12456681de227f8f532e47ea6227a",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "9bf679608bb9fd8f9d2760f903176ce9e7720ae5",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "99dfe5a291205b454f7b9467875104dc6d4e8f8c",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "0ca95607d0978a1f63e815d64b804c0c6886808e",
+        "error": "Commit metadata not found."
+      },
+      {
+        "commitHash": "3913aa60825aca760ca59e49336ca5c22204efad",
+        "error": "Commit metadata not found."
+      }
+    ],
+    "package": {
+      "name": "@originvault/ov-id-sdk",
+      "version": "0.0.1-alpha.20"
+    },
+    "id": "urn:ov-release:2025-03-03T00:32:53.174Z"
+  },
+  "issuer": {
+    "id": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9"
+  },
+  "type": [
+    "VerifiableCredential"
+  ],
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1"
+  ],
+  "issuanceDate": "2025-03-03T00:33:00.000Z",
+  "proof": {
+    "type": "JwtProof2020",
+    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7ImVudmlyb25tZW50IjoiTm9kZS5qcyB2MjMuMS4wIiwicGFja2FnZUpzb24iOnsibmFtZSI6IkBvcmlnaW52YXVsdC9vdi1pZC1zZGsiLCJ2ZXJzaW9uIjoiMC4wLjEtYWxwaGEuMjAiLCJvcmdhbml6YXRpb24iOiJvcmlnaW52YXVsdCIsImRlc2NyaXB0aW9uIjoiQSBUeXBlU2NyaXB0IFNESyBmb3IgbWFuYWdpbmcgZGVjZW50cmFsaXplZCBpZGVudGl0aWVzIChESURzKSBhbmQgdmVyaWZpYWJsZSBjcmVkZW50aWFscyAoVkNzKSIsIm1haW4iOiIuL2Rpc3Qvc3JjL2luZGV4LmpzIiwidHlwZSI6Im1vZHVsZSIsImZpbGVzIjpbImRpc3QvKiovKiJdLCJzY3JpcHRzIjp7ImJ1aWxkIjoidHNjIC0tcHJvamVjdCB0c2NvbmZpZy5idWlsZC5qc29uIiwidHNjIjoidHNjIC0tcHJvamVjdCB0c2NvbmZpZy5idWlsZC5qc29uIiwiY2xlYW4iOiJybSAtcmYgLi9kaXN0LyIsImNtIjoiY3oiLCJsaW50IjoiZXNsaW50IC4vc3JjLyAtLWZpeCIsInRlc3Q6d2F0Y2giOiJqZXN0IC0td2F0Y2giLCJ0ZXN0IjoiamVzdCAtLWNvdmVyYWdlIiwidHlwZWNoZWNrIjoidHNjIC0tbm9FbWl0IiwicHJlc3RhcnQiOiJucG0gcnVuIHRzYyIsInN0YXJ0Ijoibm9kZSBkaXN0L3NyYy9pbmRleC5qcyIsInNpZ24tY29tbWl0IjoibnB4IHRzeCBzY3JpcHRzL3NpZ24tY29tbWl0LW1ldGFkYXRhLmpzIiwic2lnbi1yZWxlYXNlIjoibnB4IHRzeCBzY3JpcHRzL3NpZ24tcmVsZWFzZS1tZXRhZGF0YS5qcyIsInByZXB1Ymxpc2giOiJucG0gcnVuIGJ1aWxkIiwicHVibGlzaCI6Im5wbSBwdWJsaXNoIiwicHJlcHVibGlzaE9ubHkiOiJub2RlIHNjcmlwdHMvc2lnbi1yZWxlYXNlLW1ldGFkYXRhLmpzIn0sInJlcG9zaXRvcnkiOnsidHlwZSI6ImdpdCIsInVybCI6ImdpdCtodHRwczovL2dpdGh1Yi5jb20vT3JpZ2luVmF1bHQvb3YtaWQtc2RrLmdpdCJ9LCJsaWNlbnNlIjoiTUlUIiwiZW5naW5lcyI6eyJub2RlIjoiPj0yMC4wIn0sImtleXdvcmRzIjpbIkRJRCIsIndlbGwta25vd24iXSwiaG9tZXBhZ2UiOiJodHRwczovL3d3dy5vcmlnaW52YXVsdC5pbyIsImRlcGVuZGVuY2llcyI6eyJAY2hlcWQvZGlkLXByb3ZpZGVyLWNoZXFkIjoiXjQuNC4xIiwiQGNvc21qcy9wcm90by1zaWduaW5nIjoiXjAuMzMuMCIsIkBjb3NtanMvdGVuZGVybWludC1ycGMiOiJeMC4zMy4wIiwiQG5vYmxlL2VkMjU1MTkiOiJeMi4yLjMiLCJAbm9ibGUvaGFzaGVzIjoiXjEuNy4xIiwiQG9yaWdpbnZhdWx0L292LXR5cGVzIjoiXjAuMC4xLWFscGhhLjEzIiwiQHBvbGthZG90L2FwaSI6Il4xNS43LjEiLCJAcG9sa2Fkb3Qva2V5cmluZyI6Il4xMy40LjMiLCJAcG9sa2Fkb3QvdXRpbCI6Il4xMy40LjMiLCJAcG9sa2Fkb3QvdXRpbC1jcnlwdG8iOiJeMTMuNC4zIiwiQHNjdXJlL2JpcDM5IjoiXjEuNS40IiwiQHZlcmFtby9jb3JlIjoiXjYuMC4wIiwiQHZlcmFtby9jb3JlLXR5cGVzIjoiXjYuMC4wIiwiQHZlcmFtby9jcmVkZW50aWFsLXczYyI6Il42LjAuMCIsIkB2ZXJhbW8vZGF0YS1zdG9yZSI6Il42LjAuMCIsIkB2ZXJhbW8vZGlkLXJlc29sdmVyIjoiXjYuMC4wIiwiQHZlcmFtby9rbXMtbG9jYWwiOiJeNi4wLjAiLCJAdmVyYW1vL3JlbW90ZS1zZXJ2ZXIiOiJeNi4wLjAiLCJAdmVyaWRhL2RpZC1jbGllbnQiOiJeNC40LjEiLCJiaXAzOSI6Il4zLjEuMCIsImNvcnMiOiJeMi44LjUiLCJjcnlwdG8iOiJeMS4wLjEiLCJkb3RlbnYiOiJeMTYuNC43IiwiZXhwcmVzcyI6Il40LjIxLjIiLCJleHByZXNzLXJhdGUtbGltaXQiOiJeNy41LjAiLCJub2RlLWZldGNoIjoiXjMuMy4yIiwicmVhZC1wYWNrYWdlLWpzb24tZmFzdCI6Il40LjAuMCIsInR3ZWV0bmFjbCI6Il4xLjAuMyIsInV1aWQiOiJeMTEuMS4wIn0sImRldkRlcGVuZGVuY2llcyI6eyJAcnlhbnNvbnNoaW5lL2NvbW1pdGl6ZW4iOiJeNC4yLjgiLCJAcnlhbnNvbnNoaW5lL2N6LWNvbnZlbnRpb25hbC1jaGFuZ2Vsb2ciOiJeMy4zLjQiLCJAdHlwZXMvYmNyeXB0anMiOiJeMi40LjYiLCJAdHlwZXMvZXhwcmVzcyI6Il41LjAuMCIsIkB0eXBlcy9qZXN0IjoiXjI3LjUuMiIsIkB0eXBlcy9ub2RlIjoiXjIwLjEwLjUiLCJAdHlwZXMvdXVpZCI6Il4xMC4wLjAiLCJjb252ZW50aW9uYWwtY2hhbmdlbG9nLWNvbnZlbnRpb25hbGNvbW1pdHMiOiJeNS4wLjAiLCJlc2xpbnQiOiJeOS4xMy4wIiwiZXNsaW50LWNvbmZpZy1wcmV0dGllciI6Il45LjEuMCIsImVzbGludC1wbHVnaW4tcHJldHRpZXIiOiJeNS4yLjEiLCJqZXN0IjoiXjI3LjIuMCIsImxpbnQtc3RhZ2VkIjoiXjEzLjIuMSIsInByZXR0aWVyIjoiXjMuMy4zIiwic2VtYW50aWMtcmVsZWFzZSI6Il4yMS4wLjEiLCJ0cy1ub2RlIjoiXjEwLjIuMSIsInR5cGVzY3JpcHQiOiJ-NS42LjIiLCJ0eXBlc2NyaXB0LWVzbGludCI6Il44LjExLjAifSwibGludC1zdGFnZWQiOnsiKi50cyI6ImVzbGludCAtLWNhY2hlIC0tY2FjaGUtbG9jYXRpb24gLmVzbGludGNhY2hlIC0tZml4In0sIl9pZCI6IkBvcmlnaW52YXVsdC9vdi1pZC1zZGtAMC4wLjEtYWxwaGEuMjAifSwidGltZXN0YW1wIjoiMjAyNS0wMy0wM1QwMDozMzowMC40NTRaIiwiY29tbWl0SGFzaCI6IjUxNmFkZTVhY2E3ODJhMzFlYTllZmRkMjczYmM0ZDBhOWUzYTBhMmMiLCJvcGVyYXRpbmdTeXN0ZW0iOiJsaW51eCA1LjE1LjE1My4xLW1pY3Jvc29mdC1zdGFuZGFyZC1XU0wyIiwiaG9zdG5hbWUiOiI5ZGMxNTZlNmFiNGU5ZTJiODAxZjFhODQxYTM4YmI3NjAyNWM4ZTgzZWYxOGEyODU0M2Y1Mjg5ODg5YjJjNzcwIiwiaXBBZGRyZXNzIjoiMTc4YTg4MDgxMGU0MDk1ZDY4NTA1ZTc3ZjM1YmM5MzllYmRlNGQ5YTRjMTNkYmMzNTdhZDNiMzU4MDNiZGFmMSJ9LCJpc3N1ZXIiOm51bGwsImlzc3VlZCI6IjIwMjUtMDMtMDNUMDA6MzI6NTMuMTc1WiIsImNvbW1pdHMiOlt7ImNvbW1pdEhhc2giOiI1MTZhZGU1YWNhNzgyYTMxZWE5ZWZkZDI3M2JjNGQwYTllM2EwYTJjIiwiZXJyb3IiOiJDb21taXQgbWV0YWRhdGEgbm90IGZvdW5kLiJ9LHsiY29tbWl0SGFzaCI6IjU1ZGQzMjk4YjA0MGM0NTc4ZWNlMzlkNGEwMWMxNjBkN2JkMWQ0MmUiLCJtZXRhZGF0YUhhc2giOiJmY2JjZjE2NTkwOGRkMThhOWU0OWY3ZmYyNzgxMDE3NmRiOGU5ZjYzYjQzNTIyMTM3NDE2NjQyNDUyMjRmOGFhIn0seyJjb21taXRIYXNoIjoiNWI3OTk1YzEwNjdlZTQzYjQwYTNkMjdjNzIyNjI5ZGRmMDFmNzI5MyIsImVycm9yIjoiQ29tbWl0IG1ldGFkYXRhIG5vdCBmb3VuZC4ifSx7ImNvbW1pdEhhc2giOiI3NzEyNDRjNTFjODhlNGU0NTJlMzAwNDM4YWI1YzZhZDMxMDMxZjBlIiwiZXJyb3IiOiJDb21taXQgbWV0YWRhdGEgbm90IGZvdW5kLiJ9LHsiY29tbWl0SGFzaCI6IjM0NDgyYTQzMDcxNTk0N2JiY2NmNGJkODdiMGU3MmJmZDA5OWE5Y2YiLCJlcnJvciI6IkNvbW1pdCBtZXRhZGF0YSBub3QgZm91bmQuIn0seyJjb21taXRIYXNoIjoiZmE3N2JkMWNjNWE4MjAzOTAwYzZjNzgxNTFmYmQzYTBkMTM0NTkzMyIsImVycm9yIjoiQ29tbWl0IG1ldGFkYXRhIG5vdCBmb3VuZC4ifSx7ImNvbW1pdEhhc2giOiIwNDNiZWU0ZDA0M2FiMDRjMzQ4OTcwMmYzYzFkOGU5NDU3M2RhYjJmIiwiZXJyb3IiOiJDb21taXQgbWV0YWRhdGEgbm90IGZvdW5kLiJ9LHsiY29tbWl0SGFzaCI6IjUxMzgyZDI4YmZiMTI0NTY2ODFkZTIyN2Y4ZjUzMmU0N2VhNjIyN2EiLCJlcnJvciI6IkNvbW1pdCBtZXRhZGF0YSBub3QgZm91bmQuIn0seyJjb21taXRIYXNoIjoiOWJmNjc5NjA4YmI5ZmQ4ZjlkMjc2MGY5MDMxNzZjZTllNzcyMGFlNSIsImVycm9yIjoiQ29tbWl0IG1ldGFkYXRhIG5vdCBmb3VuZC4ifSx7ImNvbW1pdEhhc2giOiI5OWRmZTVhMjkxMjA1YjQ1NGY3Yjk0Njc4NzUxMDRkYzZkNGU4ZjhjIiwiZXJyb3IiOiJDb21taXQgbWV0YWRhdGEgbm90IGZvdW5kLiJ9LHsiY29tbWl0SGFzaCI6IjBjYTk1NjA3ZDA5NzhhMWY2M2U4MTVkNjRiODA0YzBjNjg4NjgwOGUiLCJlcnJvciI6IkNvbW1pdCBtZXRhZGF0YSBub3QgZm91bmQuIn0seyJjb21taXRIYXNoIjoiMzkxM2FhNjA4MjVhY2E3NjBjYTU5ZTQ5MzM2Y2E1YzIyMjA0ZWZhZCIsImVycm9yIjoiQ29tbWl0IG1ldGFkYXRhIG5vdCBmb3VuZC4ifV0sInBhY2thZ2UiOnsibmFtZSI6IkBvcmlnaW52YXVsdC9vdi1pZC1zZGsiLCJ2ZXJzaW9uIjoiMC4wLjEtYWxwaGEuMjAifX19LCJzdWIiOiJ1cm46b3YtcmVsZWFzZToyMDI1LTAzLTAzVDAwOjMyOjUzLjE3NFoiLCJuYmYiOjE3NDA5NjE5ODAsImlzcyI6ImRpZDpjaGVxZDptYWlubmV0Ojk3MjBlMWVmLTI3N2MtNTkzYS04NWI3LWM2M2M3MzUzMWJkOSJ9.1zDCmjy5gdPU_LRKQRxzqi3CpzhErNt5gcQYAXqeHZZx0W9XQCRDby7_tfoWfy0dxdH3v4ACEklAlbopkOkaDw"
+  }
+}
