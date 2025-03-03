@@ -1,0 +1,31 @@
+{
+  "credentialSubject": {
+    "environment": {
+      "nodeVersion": "v23.1.0",
+      "operatingSystem": "linux 5.15.153.1-microsoft-standard-WSL2"
+    },
+    "issuer": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9",
+    "issued": "2025-03-03T04:37:23.189Z",
+    "commit": {
+      "hash": "0896173fac109559f8b5772f410e248f1dc98e12",
+      "message": "v0.0.1-alpha.22",
+      "author": "lnispel <lnispel@me.com>",
+      "timestamp": "2025-03-02T20:31:05-08:00"
+    },
+    "id": "urn:ov-commit:0896173fac109559f8b5772f410e248f1dc98e12"
+  },
+  "issuer": {
+    "id": "did:cheqd:mainnet:9720e1ef-277c-593a-85b7-c63c73531bd9"
+  },
+  "type": [
+    "VerifiableCredential"
+  ],
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1"
+  ],
+  "issuanceDate": "2025-03-03T04:37:23.000Z",
+  "proof": {
+    "type": "JwtProof2020",
+    "jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImVudmlyb25tZW50Ijp7Im5vZGVWZXJzaW9uIjoidjIzLjEuMCIsIm9wZXJhdGluZ1N5c3RlbSI6ImxpbnV4IDUuMTUuMTUzLjEtbWljcm9zb2Z0LXN0YW5kYXJkLVdTTDIifSwiaXNzdWVyIjoiZGlkOmNoZXFkOm1haW5uZXQ6OTcyMGUxZWYtMjc3Yy01OTNhLTg1YjctYzYzYzczNTMxYmQ5IiwiaXNzdWVkIjoiMjAyNS0wMy0wM1QwNDozNzoyMy4xODlaIiwiY29tbWl0Ijp7Imhhc2giOiIwODk2MTczZmFjMTA5NTU5ZjhiNTc3MmY0MTBlMjQ4ZjFkYzk4ZTEyIiwibWVzc2FnZSI6InYwLjAuMS1hbHBoYS4yMiIsImF1dGhvciI6ImxuaXNwZWwgPGxuaXNwZWxAbWUuY29tPiIsInRpbWVzdGFtcCI6IjIwMjUtMDMtMDJUMjA6MzE6MDUtMDg6MDAifX19LCJzdWIiOiJ1cm46b3YtY29tbWl0OjA4OTYxNzNmYWMxMDk1NTlmOGI1NzcyZjQxMGUyNDhmMWRjOThlMTIiLCJuYmYiOjE3NDA5NzY2NDMsImlzcyI6ImRpZDpjaGVxZDptYWlubmV0Ojk3MjBlMWVmLTI3N2MtNTkzYS04NWI3LWM2M2M3MzUzMWJkOSJ9.AGW3S01AdjasA8f932hO1_KGM5cWf9w_05WmlzQCUNI0ArWOoUOwi7HkcywJZlrekZGbMT15IH48wtcjqmAEAA"
+  }
+}
