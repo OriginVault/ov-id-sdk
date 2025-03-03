@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import util from 'util';
+import path from 'path';
 
 const execPromise = util.promisify(exec);
 
@@ -27,14 +28,13 @@ async function executeScript(scriptPath: string, args: string[] = []): Promise<s
 }
 
 /**
- * Signs a commit using a shell script.
- * @param {string} commitHash - The hash of the commit to sign.
+ * Signs a commit using the sign-commit-metadata.js script.
  * @returns {Promise<void>}
  */
-export async function signCommit(commitHash: string): Promise<void> {
-    const scriptPath = './scripts/sign-commit.sh'; // Path to your shell script
+export async function signLatestCommit(): Promise<void> {
+    const scriptPath = path.resolve(__dirname, '../scripts/sign-commit-metadata.js'); // Path to your JS script
     try {
-        const output = await executeScript(scriptPath, [commitHash]);
+        const output = await executeScript('node', [scriptPath]);
         console.log(`Commit signed successfully: ${output}`);
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -46,14 +46,13 @@ export async function signCommit(commitHash: string): Promise<void> {
 }
 
 /**
- * Signs a release using a shell script.
- * @param {string} releaseTag - The tag of the release to sign.
+ * Signs a release using the sign-release-metadata.js script.
  * @returns {Promise<void>}
  */
-export async function signRelease(releaseTag: string): Promise<void> {
-    const scriptPath = './scripts/sign-release.sh'; // Path to your shell script
+export async function signCurrentRelease(): Promise<void> {
+    const scriptPath = path.resolve(__dirname, '../scripts/sign-release-metadata.js'); // Path to your JS script
     try {
-        const output = await executeScript(scriptPath, [releaseTag]);
+        const output = await executeScript('node', [scriptPath]);
         console.log(`Release signed successfully: ${output}`);
     } catch (error: unknown) {
         if (error instanceof Error) {

@@ -6,12 +6,13 @@
 # 🚀 `@originvault/ov-id-sdk`
 **Decentralized Identity SDK for OriginVault**
 
-`@originvault/ov-id-sdk` is a **TypeScript SDK** for managing **decentralized identities (DIDs)** and **verifiable credentials (VCs)** within the **OriginVault ecosystem**. It enables developers to create, import, and manage **DIDs**, securely store private keys, and sign/verify credentials using **Web5-native identity standards**.
+`@originvault/ov-id-sdk` is a **TypeScript SDK** for managing **decentralized identities (DIDs)** and **verifiable credentials (VCs)** within the **OriginVault ecosystem**. It enables developers to create, import, and manage **DIDs**, securely store private keys, and sign/verify credentials and commits using **Web5-native identity standards**.
 
 ## 🔹 Features
 ✅ **DID Creation & Import** → Generate or restore `did:cheqd` and `did:vda` identities  
 ✅ **Secure Key Storage** → Uses **OS keychain encryption (`keytar`)** instead of environment variables  
 ✅ **Primary DID Management** → Automatically selects a **default DID for signing**  
+✅ **Commit & Release Signing** → Sign commits and releases with the developer's DID  
 ✅ **Verifiable Credential Signing & Verification** → Issue & verify **W3C-compliant credentials**  
 ✅ **Domain-Linked DID Discovery** → Auto-fetches the authoritative DID from `.well-known/did-configuration.json`  
 ✅ **Built with OV** → Designed to integrate seamlessly into **OriginVault's Web5 trust layer**  
@@ -87,15 +88,15 @@ console.log("VC Verification:", isValid);
 
 ### **5️⃣ Sign Commits and Releases**
 ```typescript
-import { signCommit, signRelease } from "@originvault/ov-id-sdk";
+import { signLatestCommit, signCurrentRelease } from "@originvault/ov-id-sdk";
 
-// ✅ Sign a commit
-const commitSignature = await signCommit("commit-hash", "did:cheqd:mainnet:1234");
-console.log("Commit Signature:", commitSignature);
+// ✅ Sign the latest commit
+await signLatestCommit();
+console.log("Latest commit signed successfully.");
 
-// ✅ Sign a release
-const releaseSignature = await signRelease("release-tag", "did:cheqd:mainnet:1234");
-console.log("Release Signature:", releaseSignature);
+// ✅ Sign the current release
+await signCurrentRelease();
+console.log("Current release signed successfully.");
 ```
 
 ---
