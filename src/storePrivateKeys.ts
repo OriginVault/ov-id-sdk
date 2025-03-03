@@ -261,7 +261,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 
             // Encrypt the password
             const encryptedPassword = encryptPrivateKey(password, encryptionKey);
-
+            console.log("🔑 Encrypted Password:", encryptedPassword);
             // Store the encrypted password in a file
             const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
             fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
@@ -290,9 +290,12 @@ export async function getPrimaryDID(): Promise<string | null> {
         try {
             const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
             const { meta } = JSON.parse(storedData);
+            console.log("🔑 Meta:", meta);
             if(!meta) return null;
-            const { did, credential } = meta;
-            if(!credential) return null;
+            const { did, didCredential } = meta;
+            console.log("🔑 Did:", did);
+            console.log("🔑 Credential:", didCredential);
+            if(!didCredential) return null;
             if(did) return did;
         } catch (error) {
             console.error("❌ Error accessing keyring. File may not exist",);
@@ -323,7 +326,7 @@ export async function verifyPrimaryDID(password: string): Promise<string | boole
         if(!encryptedPrivateKey) return false;
         
         const did = meta.did;
-        console.log("🔑 Did", storedData);
+        console.log("🔑 Did:", storedData);
         const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
         if (!privateKey) {
             console.error("❌ Failed to decrypt private key");
@@ -499,10 +502,10 @@ export async function getPrimaryVC(): Promise<any | null> {
 // Function to retrieve and decrypt the password
 export function getStoredPassword(): string | null {
     ensurePasswordFileExists();
-    const passwordFilePath = path.resolve(process.env.PASSWORD_FILE_PATH || '/home/lukenispel/.encrypted-password');
-
+    const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+    const encryptedPassword = JSON.parse(fs.readFileSync(passwordFilePath, 'utf8').trim());
     try {
-        return fs.readFileSync(passwordFilePath, 'utf8').trim();
+        return decryptPrivateKey(encryptedPassword, process.env.ENCRYPTION_KEY || '');
     } catch (error) {
         console.error(`❌ Error retrieving stored password: ${error}`);
         return null;

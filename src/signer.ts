@@ -9,7 +9,7 @@ export async function signVC(subject: any, password): Promise<any> {
 
         if(!did) return false;
 
-        const environment = getDevelopmentEnvironmentMetadata();
+        const environment = await getDevelopmentEnvironmentMetadata();
 
         const signedVC = await agent.createVerifiableCredential({
             credential: {

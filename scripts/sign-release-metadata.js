@@ -4,6 +4,10 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { signVC } from '../src/signer'; // Ensure this function signs with the developer's DID
 import { getCertDir } from '../src/config';
+import readline from 'readline';
+import { getStoredPassword, getPrimaryDID } from '../src/storePrivateKeys';
+import os from 'os';
+import { createHash } from 'crypto';
 
 dotenv.config();
 
@@ -11,9 +15,6 @@ const CERT_DIR = getCertDir();
 
 // Ensure the certificate directory exists
 if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
-
-// Define the password variable
-const encryptionKey = process.env.ENCRYPTION_KEY;
 
 async function getCommitsSinceLastTag() {
     try {
@@ -26,7 +27,31 @@ async function getCommitsSinceLastTag() {
     }
 }
 
-(async () => {
+async function signCommit(commitHash, developerDID, storedPassword) {
+    const metadata = {
+        id: `urn:ov-commit:${commitHash}`,
+        issuer: developerDID,
+        issued: new Date().toISOString(),
+        commit: {
+            hash: commitHash,
+            message: execSync(`git log -1 --pretty=%B ${commitHash}`).toString().trim(),
+            author: execSync(`git log -1 --pretty=format:"%an <%ae>" ${commitHash}`).toString().trim(),
+            timestamp: execSync(`git log -1 --pretty=%aI ${commitHash}`).toString().trim(),
+        },
+        environment: {
+            nodeVersion: process.version,
+            operatingSystem: `${os.platform()} ${os.release()}`,
+        }
+    };
+
+    const signedMetadata = await signVC(metadata, storedPassword);
+    const certPath = path.join(CERT_DIR, `${commitHash}.json`);
+    fs.writeFileSync(certPath, JSON.stringify(signedMetadata, null, 2));
+    console.log(`✅ Signed commit metadata stored at: ${certPath}`);
+    return signedMetadata;
+}
+
+async function signRelease() {
     try {
         const commits = await getCommitsSinceLastTag();
         if (commits.length === 0) {
@@ -34,37 +59,63 @@ async function getCommitsSinceLastTag() {
             process.exit(0);
         }
 
-        const developerDID = process.env.DEV_DID || 'did:example:developer';
-        const commitMetadata = commits.map((commitHash) => {
-            const certPath = path.join(CERT_DIR, `${commitHash}.json`);
-            if (fs.existsSync(certPath)) {
-                return JSON.parse(fs.readFileSync(certPath, 'utf-8'));
-            } else {
-                return { commitHash, error: "Commit metadata not found." };
-            }
-        });
+        const developerDID = await getPrimaryDID();
+        let storedPassword = getStoredPassword();
 
+        if (!storedPassword.length) {
+            const rl = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+
+            storedPassword = await new Promise((resolve) => {
+                rl.question("Password not found. Please enter your password: ", (password) => {
+                    rl.close();
+                    resolve(password);
+                });
+            });
+        }
+
+        const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+        const releaseFileName = `${packageJson.name}-${packageJson.version}-${new Date().toISOString()}.json`;
+        const releaseFilePath = path.join(CERT_DIR, releaseFileName);
+
+        // Ensure the directory for the release file exists
+        const releaseDir = path.dirname(releaseFilePath);
+        if (!fs.existsSync(releaseDir)) {
+            fs.mkdirSync(releaseDir, { recursive: true });
+        }
+
+        const commitsMetadata = [];
+
+        for (const commitHash of commits) {
+            const signedMetadata = await signCommit(commitHash, developerDID, storedPassword);
+            const metadataHash = createHash('sha256').update(JSON.stringify(signedMetadata)).digest('hex');
+            commitsMetadata.push({ commitHash, metadataHash });
+        }
+        
         const releaseMetadata = {
             id: `urn:ov-release:${new Date().toISOString()}`,
             issuer: developerDID,
             issued: new Date().toISOString(),
-            commits: commitMetadata,
+            commits: commitsMetadata,
             package: {
                 name: JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).name,
                 version: execSync('npm pkg get version').toString().trim().replace(/"/g, ''),
             }
         };
 
-        // Sign the entire release metadata
-        const signedReleaseMetadata = await signVC(releaseMetadata, encryptionKey);
+        const signedReleaseMetadata = await signVC(releaseMetadata, storedPassword);
 
-        // Store as JSON
-        const releaseCertPath = path.join(CERT_DIR, 'latest-release.json');
-        fs.writeFileSync(releaseCertPath, JSON.stringify(signedReleaseMetadata, null, 2));
-
-        console.log(`✅ Signed release metadata stored at: ${releaseCertPath}`);
+        // Store the release metadata
+        fs.writeFileSync(releaseFilePath, JSON.stringify(signedReleaseMetadata, null, 2));
+        console.log(`✅ Release metadata stored at: ${releaseFilePath}`);
     } catch (error) {
         console.error("❌ Error signing release metadata:", error);
         process.exit(1);
     }
+}
+
+(async () => {
+    await signRelease();
 })(); 
