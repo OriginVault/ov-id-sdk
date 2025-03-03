@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import util from 'util';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const execPromise = util.promisify(exec);
 
@@ -26,6 +27,9 @@ async function executeScript(scriptPath: string, args: string[] = []): Promise<s
         throw new Error('Failed to execute script: Unknown error');
     }
 }
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Signs a commit using the sign-commit-metadata.js script.

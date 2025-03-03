@@ -14,7 +14,6 @@ import { encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import { encryptData } from './dataManager.js';
 import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
 import { getDevelopmentEnvironmentMetadata } from './environment.js';
-import { encrypt, decrypt } from './utils/encryption'; // Import the encryption utilities
 
 dotenv.config();
 
@@ -290,11 +289,8 @@ export async function getPrimaryDID(): Promise<string | null> {
         try {
             const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
             const { meta } = JSON.parse(storedData);
-            console.log("🔑 Meta:", meta);
             if(!meta) return null;
             const { did, didCredential } = meta;
-            console.log("🔑 Did:", did);
-            console.log("🔑 Credential:", didCredential);
             if(!didCredential) return null;
             if(did) return did;
         } catch (error) {
@@ -320,13 +316,11 @@ export async function getPrimaryDID(): Promise<string | null> {
 // ✅ Retrieve the primary DID
 export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
     try {
-        console.log("🔑 Verifying Primary DID", password);
         const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
         const { encryptedPrivateKey, meta } = JSON.parse(storedData);
         if(!encryptedPrivateKey) return false;
         
         const did = meta.did;
-        console.log("🔑 Did:", storedData);
         const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
         if (!privateKey) {
             console.error("❌ Failed to decrypt private key");

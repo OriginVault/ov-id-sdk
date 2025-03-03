@@ -7,8 +7,8 @@ import { getCertDir } from '../src/config.js';
 import readline from 'readline';
 import { getStoredPassword, getPrimaryDID } from '../src/storePrivateKeys.js';
 import os from 'os';
+import tar from 'tar'; // Import tar
 import { createHash } from 'crypto';
-import { createCommitBundle, computeBundleHash } from './sign-commit-metadata.js';
 
 dotenv.config();
 
@@ -27,6 +27,35 @@ async function getCommitsSinceLastTag() {
         return execSync('git log --pretty=%H').toString().trim().split('\n');
     }
 }
+
+// Create a tarball of the entire package at the time of publish
+export async function createCommitBundle(commitHash) {
+    const bundlePath = path.join(CERT_DIR, `${commitHash}.tar.gz`);
+    
+    // Get all files in the repository
+    const allFiles = execSync('git ls-files')
+        .toString()
+        .trim()
+        .split('\n');
+
+    if (allFiles.length === 0) {
+        throw new Error(`❌ No files found in the repository for commit ${commitHash}`);
+    }
+
+    await tar.create(
+        { gzip: true, file: bundlePath, cwd: process.cwd() },
+        allFiles
+    );
+
+    return bundlePath;
+}
+
+// Compute SHA-256 hash of the tarball
+export function computeBundleHash(bundlePath) {
+    const bundleContent = fs.readFileSync(bundlePath);
+    return createHash('sha256').update(bundleContent).digest('hex');
+}
+
 
 async function signCommit(commitHash, developerDID, storedPassword) {
     const metadata = {
@@ -78,8 +107,12 @@ async function signRelease() {
         }
 
         const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
-        const releaseFileName = `${packageJson.name}-${packageJson.version}-${new Date().toISOString()}.json`;
+        
+        // Remove the date string from the file name
+        const releaseFileName = `${packageJson.name}-${packageJson.version}.json`;
         const releaseFilePath = path.join(CERT_DIR, releaseFileName);
+
+        console.log(`Release file path: ${releaseFilePath}`); // Debugging output
 
         // Ensure the directory for the release file exists
         const releaseDir = path.dirname(releaseFilePath);

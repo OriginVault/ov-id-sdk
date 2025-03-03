@@ -1,4 +1,3 @@
-import bs58 from 'bs58';
 import { x25519 } from '@noble/curves/ed25519';
 import sodium from 'libsodium-wrappers';
 
