@@ -23,7 +23,8 @@
     "start": "node dist/src/index.js",
     "sign-commit": "npx tsx scripts/sign-commit-metadata.js",
     "sign-release": "npx tsx scripts/sign-release-metadata.js",
-    "publish": "npm publish"
+    "publish": "npm publish",
+    "prepublishOnly": "npm run build && npm run sign-release"
   },
   "repository": {
     "type": "git",
