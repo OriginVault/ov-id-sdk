@@ -33,7 +33,20 @@ const VeridaResolver = {
 
 // Create a key store instance
 const keyStore = new MemoryKeyStore();
-const privateKeyStore = new MemoryPrivateKeyStore();
+export const privateKeyStore = new MemoryPrivateKeyStore();
+
+export declare enum CheqdNetwork {
+    Mainnet = "mainnet",
+    Testnet = "testnet"
+}
+
+export const cheqdMainnetProvider = new CheqdDIDProvider({
+    defaultKms: 'local',
+    networkType: 'mainnet' as CheqdNetwork,
+    dkgOptions: { chain: 'cheqdMainnet' },
+    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
+    cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
+})
 
 export const agent = createAgent({
     plugins: [
@@ -45,12 +58,14 @@ export const agent = createAgent({
         }),
         new DIDManager({
             store: new MemoryDIDStore(),
-            defaultProvider: 'did:cheqd',
+            defaultProvider: 'did:cheqd:mainnet',
             providers: {
-                'did:cheqd': new CheqdDIDProvider({
+                'did:cheqd:mainnet': cheqdMainnetProvider,
+                'did:cheqd:testnet': new CheqdDIDProvider({
                     defaultKms: 'local',
-                    dkgOptions: { chain: 'cheqdMainnet' },
-                    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.io',
+                    networkType: 'testnet' as CheqdNetwork,
+                    dkgOptions: { chain: 'cheqdTestnet' },
+                    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
                     cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
                 }),
                 'did:key': new KeyDIDProvider({
@@ -66,4 +81,4 @@ export const agent = createAgent({
         }),
         new CredentialPlugin(),
     ],
-}); 
+});

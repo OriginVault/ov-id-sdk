@@ -34,8 +34,11 @@ export function decryptPrivateKey(encryptedData: { iv: string, encrypted: string
 
 export async function convertRecoveryToPrivateKey(mnemonic) {
     try {
+      console.log("🔑 Converting recovery to private key", mnemonic);
       const entropy = bip39.mnemonicToEntropy(mnemonic, wordlist)
+      console.log("🔑 Entropy", entropy);
       const privateKey = Buffer.from(entropy, 'hex');
+      console.log("🔑 Private Key", privateKey);
 
       const privateKeyBase64 = async () => {
         const publicKey = await ed25519.getPublicKey(privateKey);
@@ -61,8 +64,6 @@ export async function convertPrivateKeyToRecovery(privateKey) {
         if (!(decodedKey instanceof Uint8Array)) {
             throw new Error("Private key is not a Uint8Array");
         }
-
-        console.log("🔑 Private Key (Hex):", Buffer.from(decodedKey).toString('hex'));
 
         // Validate private key length
         if (decodedKey.length !== 64) {
