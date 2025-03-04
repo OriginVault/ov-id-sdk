@@ -1,6 +1,6 @@
 {
   "name": "@originvault/ov-id-sdk",
-  "version": "0.0.1-alpha.24",
+  "version": "0.0.1-alpha.25",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
   "main": "./dist/src/index.js",
@@ -60,6 +60,7 @@
     "@veramo/remote-server": "^6.0.0",
     "@verida/did-client": "^4.4.1",
     "bip39": "^3.1.0",
+    "c2pa-node": "^0.5.23",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.7",

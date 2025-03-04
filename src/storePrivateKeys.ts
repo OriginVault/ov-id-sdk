@@ -22,15 +22,29 @@ ed25519.etc.sha512Sync = sha512;
 // Initialize keyring
 let keyring: Keyring | undefined;
 
+const KEYRING_FILE = path.join(os.homedir(), '.cheqd-did-keyring.json');
+
 async function ensureKeyring(): Promise<Keyring> {
+    // Check if keyring is already initialized
     if (!keyring) {
         await cryptoWaitReady();
         keyring = new Keyring({ type: 'ed25519' });
+
+        // Load existing keys from the keyring file
+        if (fs.existsSync(KEYRING_FILE)) {
+            const storedData = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
+            if (storedData && storedData.meta) {
+                // Assuming storedData.meta contains the keys
+                const keys = storedData.meta.keys || []; // Adjust based on your actual structure
+                keys.forEach((key: any) => {
+                    keyring?.addPair(key); // Add each key to the keyring
+                });
+            }
+        }
     }
     return keyring;
 }
 
-const KEYRING_FILE = path.join(os.homedir(), '.cheqd-did-keyring.json');
 
 // ✅ Fetch DID Configuration from a Domain
 async function fetchDomainDID(domain: string): Promise<string | null> {
@@ -47,7 +61,8 @@ async function fetchDomainDID(domain: string): Promise<string | null> {
     return null;
 }
 
-const getPublicKeyMultibase = async (did: string) => {
+
+export const getVerifiedAuthentication = async (did: string) => {
     const resolvedDid = await agent.resolveDid({ didUrl: did });
     if (!resolvedDid) {
         console.error("❌ DID could not be resolved", did);
@@ -69,11 +84,15 @@ const getPublicKeyMultibase = async (did: string) => {
         console.error("❌ Could not find verification method for standard did authentication", did);
         return false;
     }
-    const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
-    if (!publicKeyMultibase) {
-        console.error("❌ No public key multibase found for verification method", did);
+    return verifiedAuthentication;
+}
+
+export const getPublicKeyMultibase = async (did: string) => {
+    const verifiedAuthentication = await getVerifiedAuthentication(did);
+    if (!verifiedAuthentication) {
         return false;
     }
+    const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
     return publicKeyMultibase;
 }
 
@@ -342,7 +361,8 @@ export async function verifyPrimaryDID(password: string): Promise<string | boole
                     }
                 ]
             });
-            console.log("✅ DID successfully imported into Veramo.");
+
+            console.log("✅ Primary DID successfully verified and ready to use");
         } catch (error) {
             console.error("❌ Failed to import DID into Veramo:", error);
             return false;
@@ -380,11 +400,23 @@ export async function getPrivateKeyForPrimaryDID(password: string) {
 }
 
 
-export async function storePrivateKey(did: string, privateKey: string): Promise<void> {
+export async function storePrivateKey(did: string, privateKey: Uint8Array): Promise<void> {
     try {
+        // Check the length of the private key
+        if (privateKey.length === 64) {
+            console.warn("Using only the first 32 bytes of the 64-byte private key.");
+            privateKey = privateKey.slice(0, 32); // Use only the first 32 bytes
+        } else if (privateKey.length !== 32) {
+            throw new Error("Invalid private key length. Expected 32 bytes or 64 bytes.");
+        }
+
         const kr = await ensureKeyring();
-        const pair = kr.addFromUri(privateKey, { did, isPrimary: false });
+
+        const pair = kr.addFromSeed(privateKey, { did, isPrimary: false });
         kr.addPair(pair);
+
+        fs.writeFileSync(KEYRING_FILE, JSON.stringify(kr.getPairs(), null, 2));
+        console.log("🔑 Private Key Stored");
     } catch (error) {
         console.error("❌ Error storing private key:", error);
         throw error;
@@ -395,6 +427,7 @@ export async function retrievePrivateKey(did: string): Promise<string | null> {
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs();
+        console.log("🔑 Pairs", pairs);
         const pair = pairs.find(p => p.meta.did === did);
         return pair ? pair.address : null;
     } catch (error) {
@@ -443,7 +476,7 @@ export async function encryptDataForDID(did: string, message: string): Promise<{
     return encryptedData;
 }
 
-function base64ToHex(base64) {
+export function base64ToHex(base64) {
     // Decode the Base64 string to a byte array
     const binaryString = atob(base64); // atob decodes a Base64 string
     const byteArray = new Uint8Array(binaryString.length);
@@ -504,4 +537,13 @@ export function getStoredPassword(): string | null {
         console.error(`❌ Error retrieving stored password: ${error}`);
         return null;
     }
+}
+
+export function hexToBase64(hex: string): string {
+    // Convert hex string to byte array
+    const byteArray = new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    
+    // Convert byte array to Base64 string
+    const binaryString = String.fromCharCode(...byteArray);
+    return btoa(binaryString); // btoa encodes a binary string to Base64
 }
