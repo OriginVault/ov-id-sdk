@@ -136,7 +136,6 @@ console.log("Development Environment:", environment);
 
 ## 🏗 Built With
 - **[Cheqd DID SDK](https://docs.cheqd.io/)** → DID creation & verification  
-- **[Verida DID](https://verida.io/)** → Identity-backed data storage  
 - **[Veramo](https://veramo.io/)** → Web5-native identity agent  
 - **[W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)** → Open trust standards  
 - **[Polkadot Keyring](https://polkadot.js.org/docs/api/start/keyring/)** → Secure, in-memory key management for DIDs
