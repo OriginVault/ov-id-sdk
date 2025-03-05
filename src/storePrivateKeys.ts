@@ -13,7 +13,8 @@ import { v5 as uuidv5 } from 'uuid'; // Import the uuid library
 import { encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import { encryptData } from './dataManager.js';
 import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
-import { getDevelopmentEnvironmentMetadata } from './environment.js';
+import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from './environment.js';
+import inquirer from 'inquirer';
 
 dotenv.config();
 
@@ -24,20 +25,52 @@ let keyring: Keyring | undefined;
 
 const KEYRING_FILE = path.join(os.homedir(), '.cheqd-did-keyring.json');
 
+// Define the path for the encryption key file
+const encryptionKeyFilePath = path.join(os.homedir(), '.encryption-key');
+
+let encryptionKey: string | undefined;
+
+async function initializeEncryptionKey() {
+    if (!fs.existsSync(encryptionKeyFilePath)) {
+        // Prompt for the encryption key if the file does not exist
+        const { encryptionKey: inputKey } = await inquirer.prompt([
+            {
+                type: 'password',
+                name: 'encryptionKey',
+                message: 'Enter an encryption key to encrypt the password:',
+                mask: '*',
+            },
+        ]);
+        // Store the encryption key in the file
+        fs.writeFileSync(encryptionKeyFilePath, JSON.stringify({ key: inputKey }), 'utf8');
+        encryptionKey = inputKey;
+    } else {
+        const { key } = JSON.parse(fs.readFileSync(encryptionKeyFilePath, 'utf8'));
+        encryptionKey = key;
+    }
+}
+
+// Call the initialization function at the start
+initializeEncryptionKey().catch(error => {
+    console.error("❌ Error initializing encryption key:", error);
+});
+
+// Ensure the keyring is initialized
 async function ensureKeyring(): Promise<Keyring> {
-    // Check if keyring is already initialized
+    if (!encryptionKey) {
+        await initializeEncryptionKey();
+    }
+    
     if (!keyring) {
         await cryptoWaitReady();
         keyring = new Keyring({ type: 'ed25519' });
 
-        // Load existing keys from the keyring file
         if (fs.existsSync(KEYRING_FILE)) {
             const storedData = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
             if (storedData && storedData.meta) {
-                // Assuming storedData.meta contains the keys
-                const keys = storedData.meta.keys || []; // Adjust based on your actual structure
+                const keys = storedData.meta.keys || [];
                 keys.forEach((key: any) => {
-                    keyring?.addPair(key); // Add each key to the keyring
+                    keyring?.addPair(key);
                 });
             }
         }
@@ -45,23 +78,7 @@ async function ensureKeyring(): Promise<Keyring> {
     return keyring;
 }
 
-
-// ✅ Fetch DID Configuration from a Domain
-async function fetchDomainDID(domain: string): Promise<string | null> {
-    try {
-        const url = `https://${domain}/.well-known/did-configuration.json`;
-        const response = await axios.get(url);
-        const data = response.data;
-        if (data?.linked_dids?.length) {
-            return data.linked_dids[0].id; // Use the first listed DID
-        }
-    } catch (error) {
-        console.error(`❌ Failed to fetch DID configuration from ${domain}:`, error);
-    }
-    return null;
-}
-
-
+// Exported functions
 export const getVerifiedAuthentication = async (did: string) => {
     const resolvedDid = await agent.resolveDid({ didUrl: did });
     if (!resolvedDid) {
@@ -96,27 +113,8 @@ export const getPublicKeyMultibase = async (did: string) => {
     return publicKeyMultibase;
 }
 
-// ✅ Ensure the keyring file exists
-function ensureKeyringFileExists() {
-    if (!fs.existsSync(KEYRING_FILE)) {
-        fs.writeFileSync(KEYRING_FILE, JSON.stringify({ meta: {} }, null, 2)); // Create an empty keyring file
-        console.log("✅ Keyring file created:", KEYRING_FILE);
-    }
-}
-
-// ✅ Ensure the password file exists
-function ensurePasswordFileExists() {
-    const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
-    if (!fs.existsSync(passwordFilePath)) {
-        fs.writeFileSync(passwordFilePath, JSON.stringify("")); // Create an empty password file
-        console.log("✅ Password file created:", passwordFilePath);
-    }
-}
-
-// ✅ Set the primary DID (User Defined or Domain Verified)
 export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean | any> {
-    ensureKeyringFileExists(); // Ensure keyring file exists
-    ensurePasswordFileExists(); // Ensure password file exists
+    ensureKeyring(); // Ensure keyring is initialized
     if (!privateKey) {
         console.error("❌ Private key must be provided to set primary DID");
         return false;
@@ -272,17 +270,33 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
             }
 
-            const encryptionKey = process.env.ENCRYPTION_KEY;
-            if (!encryptionKey) {
-                throw new Error("Encryption key not found in environment variables");
-            }
-
-            // Encrypt the password
-            const encryptedPassword = encryptPrivateKey(password, encryptionKey);
-            console.log("🔑 Encrypted Password:", encryptedPassword);
-            // Store the encrypted password in a file
             const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
-            fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
+            if (!encryptionKey) {
+                const { encryptionKey } = await inquirer.prompt([
+                    {
+                        type: 'password',
+                        name: 'encryptionKey',
+                        message: 'Enter an encryption key to encrypt the password:',
+                        mask: '*', 
+                    },
+                ]);
+
+                if(!encryptionKey) {
+                    console.warn("❌ No encryption key provided, password will not be encrypted");
+                    fs.writeFileSync(passwordFilePath, JSON.stringify(password));
+                }
+
+                 // Encrypt the password
+                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                // Store the encrypted password in a file
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptionKey));
+            } else {
+                // Encrypt the password
+                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                // Store the encrypted password in a file
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
+            }
 
             return signedVC;
         } catch (error) {
@@ -295,7 +309,6 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
     }
 }
 
-// ✅ Retrieve the primary DID
 export async function getPrimaryDID(): Promise<string | null> {
     try {
         const kr = await ensureKeyring();
@@ -332,7 +345,6 @@ export async function getPrimaryDID(): Promise<string | null> {
     }
 }
 
-// ✅ Retrieve the primary DID
 export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
     try {
         const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
@@ -398,7 +410,6 @@ export async function getPrivateKeyForPrimaryDID(password: string) {
 
     return privateKey;
 }
-
 
 export async function storePrivateKey(did: string, privateKey: Uint8Array): Promise<void> {
     try {
@@ -495,7 +506,6 @@ export function base64ToHex(base64) {
     return hexString;
 }
 
-// Define the setPrimaryVc function
 export function setPrimaryVc(signedVC: any) {
     // Log the signed VC
     console.log("Setting primary VC:", signedVC);
@@ -510,7 +520,6 @@ export function setPrimaryVc(signedVC: any) {
     }
 }
 
-// ✅ Retrieve the primary VC
 export async function getPrimaryVC(): Promise<any | null> {
     try {
         const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
@@ -526,11 +535,15 @@ export async function getPrimaryVC(): Promise<any | null> {
     }
 }
 
-// Function to retrieve and decrypt the password
 export function getStoredPassword(): string | null {
     ensurePasswordFileExists();
     const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
     const encryptedPassword = JSON.parse(fs.readFileSync(passwordFilePath, 'utf8').trim());
+
+    if(!encryptedPassword.iv) {
+        return encryptedPassword;
+    }
+
     try {
         return decryptPrivateKey(encryptedPassword, process.env.ENCRYPTION_KEY || '');
     } catch (error) {
@@ -546,4 +559,27 @@ export function hexToBase64(hex: string): string {
     // Convert byte array to Base64 string
     const binaryString = String.fromCharCode(...byteArray);
     return btoa(binaryString); // btoa encodes a binary string to Base64
+}
+
+// ✅ Fetch DID Configuration from a Domain
+async function fetchDomainDID(domain: string): Promise<string | null> {
+    try {
+        const url = `https://${domain}/.well-known/did-configuration.json`;
+        const response = await axios.get(url);
+        const data = response.data;
+        if (data?.linked_dids?.length) {
+            return data.linked_dids[0].id; // Use the first listed DID
+        }
+    } catch (error) {
+        console.error(`❌ Failed to fetch DID configuration from ${domain}:`, error);
+    }
+    return null;
+}
+
+// ✅ Ensure the password file exists
+function ensurePasswordFileExists() {
+    const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+    if (!fs.existsSync(passwordFilePath)) {
+        fs.writeFileSync(passwordFilePath, JSON.stringify("")); // Create an empty password file
+    }
 }
