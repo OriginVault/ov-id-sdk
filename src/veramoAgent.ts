@@ -8,6 +8,7 @@ import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
+import { getCosmosPayerSeed } from './walletManager.js';
 
 import dotenv from 'dotenv';
 
@@ -40,18 +41,26 @@ export declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
-export const cheqdMainnetProvider = new CheqdDIDProvider({
-    defaultKms: 'local',
-    networkType: 'mainnet' as CheqdNetwork,
-    dkgOptions: { chain: 'cheqdMainnet' },
-    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-    cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
-})
 
-export const agent = createAgent({
-    plugins: [
-        new KeyManager({
-            store: keyStore,
+let cheqdMainnetProvider: CheqdDIDProvider;
+let agent: any;
+
+
+const initializeAgent = async ({ payerSeed }: { payerSeed?: string } = {}) => {
+    let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
+
+    cheqdMainnetProvider = new CheqdDIDProvider({
+        defaultKms: 'local',
+        networkType: 'mainnet' as CheqdNetwork,
+        dkgOptions: { chain: 'cheqdMainnet' },
+        rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
+        cosmosPayerSeed,
+    })
+
+    agent = createAgent({
+        plugins: [
+            new KeyManager({
+                store: keyStore,
             kms: {
                 local: new KeyManagementSystem(privateKeyStore),
             },
@@ -80,5 +89,10 @@ export const agent = createAgent({
             })
         }),
         new CredentialPlugin(),
-    ],
-});
+        ],
+    })
+}
+
+initializeAgent();
+
+export { agent, initializeAgent, cheqdMainnetProvider };

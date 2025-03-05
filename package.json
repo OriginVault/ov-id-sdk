@@ -1,6 +1,6 @@
 {
   "name": "@originvault/ov-id-sdk",
-  "version": "0.0.1-alpha.31",
+  "version": "0.0.1-alpha.45",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
   "main": "./dist/src/index.js",
@@ -23,7 +23,6 @@
     "start": "node dist/src/index.js",
     "sign-commit": "npx tsx scripts/sign-commit-metadata.js",
     "sign-release": "npx tsx scripts/sign-release-metadata.js",
-    "publish": "npm publish",
     "prepublishOnly": "npm run build"
   },
   "repository": {

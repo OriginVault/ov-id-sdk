@@ -6,6 +6,7 @@ import * as IdentityManager from './identityManager.js';
 import * as Encryption from './encryption.js';
 import * as Environment from './environment.js';
 import * as ReleaseManager from './releaseManager.js';
+import * as WalletManager from './walletManager.js';
 
 export * from './veramoAgent.js';
 export * from './resolver.js';
@@ -15,9 +16,10 @@ export * from './identityManager.js';
 export * from './encryption.js';
 export * from './environment.js';
 export * from './releaseManager.js';
+export * from './walletManager.js';
 
 export const OvId = {
-    agent: VeramoAgent,
+    veramoAgent: VeramoAgent,
     resolver: Resolver,
     signer: Signer,
     storePrivateKeys: StorePrivateKeys,
@@ -25,5 +27,6 @@ export const OvId = {
     encryption: Encryption,
     environment: Environment,
     releaseManager: ReleaseManager,
+    walletManager: WalletManager,
 }
 

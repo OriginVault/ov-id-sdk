@@ -1,5 +1,5 @@
 import { agent } from './veramoAgent.js';
-import { verifyPrimaryDID } from './storePrivateKeys.js';
+import { verifyPrimaryDID } from './identityManager.js';
 import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from './environment.js';
 
 export async function signVC(subject: any, password): Promise<any> {

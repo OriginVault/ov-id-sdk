@@ -4,13 +4,17 @@ import { storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
 import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
+import os from 'os';
+import inquirer from 'inquirer';
 import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
-import { getVerifiedAuthentication, getPrimaryDID, base64ToHex, hexToBase64, retrievePrivateKey } from './storePrivateKeys.js';
-import { convertPrivateKeyToRecovery } from './encryption.js';
+import { getDevelopmentEnvironmentMetadata } from './environment.js';
+import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, KEYRING_FILE, ensureKeyring, encryptionKey } from './storePrivateKeys.js';
+import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import { privateKeyStore, cheqdMainnetProvider } from './veramoAgent.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 
 // Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -257,4 +261,305 @@ export async function createResource({ didString, filePath, name }) {
     };
 
     return await cheqdMainnetProvider.createResource(params, { agent, kms: 'local' } as any);
+}
+
+
+// ✅ Fetch DID Configuration from a Domain
+async function fetchDomainDID(domain: string): Promise<string | null> {
+    try {
+        const url = `https://${domain}/.well-known/did-configuration.json`;
+        const response = await axios.get(url);
+        const data = response.data;
+        if (data?.linked_dids?.length) {
+            return data.linked_dids[0].id; // Use the first listed DID
+        }
+    } catch (error) {
+        console.error(`❌ Failed to fetch DID configuration from ${domain}:`, error);
+    }
+    return null;
+}
+
+
+export async function setPrimaryDID(did: string, privateKey: string, password: string): Promise<boolean | any> {
+    ensureKeyring(); // Ensure keyring is initialized
+    if (!privateKey) {
+        console.error("❌ Private key must be provided to set primary DID");
+        return false;
+    }
+    console.log("🔑 Setting primary DID", did);
+    const publicKeyMultibase = await getPublicKeyMultibase(did);
+    if (!publicKeyMultibase) return false;
+    try {
+        const kr = await ensureKeyring();
+        // Convert the private key from base64 to Uint8Array
+        const privateKeyBytes = Uint8Array.from(Buffer.from(privateKey, 'base64'));
+        // Derive public key
+        const privateKeySub = privateKeyBytes.subarray(0, 32);
+        const publicKeyBytes = await ed25519.getPublicKey(privateKeySub);
+        const derivedPublicKey = Buffer.from(publicKeyBytes).toString('base64');
+        // Convert base64 to buffer to base58
+        const publicKeyBuffer = multibase.decode(Buffer.from(publicKeyMultibase, 'utf-8'));
+        // Remove the first byte (Multibase prefix)
+        const publicKeySliced = publicKeyBuffer.slice(2);
+        // Convert to Base64 for comparison
+        const documentPublicKey = Buffer.from(publicKeySliced).toString('base64');
+        // Compare without the multibase prefix
+        if (derivedPublicKey !== documentPublicKey) {
+            console.error("❌ Private key does not match the public key in DID document");
+            return false;
+        }
+
+        const verificationSteps: DIDAssertionCredentialSubject['verificationSteps'] = [
+            {
+                step: "Get public key multibase from resolved DID",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert private key from base64 to Uint8Array",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Derive public key from private key",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert derived public key to base64",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },
+            {
+                step: "Convert public key multibase to buffer and remove prefix",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            },      
+            {
+                step: "Convert sliced public key to base64 for comparison",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            }
+        ];
+
+        console.log("✅ Private key verified against resolved DID");
+        // Add the key pair to the keyring using the raw private key
+        const pair = kr.addFromSeed(privateKeySub, { did, isPrimary: true });
+        kr.addPair(pair);
+
+         // ✅ Ensure the DID is imported into Veramo
+        try {
+            await agent.didManagerImport({
+                did,
+                provider: "did:cheqd",
+                controllerKeyId: did,
+                keys: [
+                    {
+                        kid: "default",
+                        type: "Ed25519",
+                        privateKeyHex: base64ToHex(privateKey),
+                        kms: "local"
+                    }
+                ]
+            });
+            console.log("✅ DID successfully imported into Veramo.");
+
+            const credentialId = uuidv5(did + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
+            const credential: DIDAssertionCredential = {
+                id: credentialId,
+                issuer: { id: did },
+                credentialSubject: {
+                    id: did,
+                    assertionType: "did-key-verification",
+                    assertionDate: new Date().toISOString(),
+                    assertionResult: 'Passed',
+                    verificationSteps,
+                },
+                '@context': ['https://www.w3.org/2018/credentials/v1'],
+                type: ['VerifiableCredential'],
+                expirationDate: new Date().toISOString()
+            };
+
+            const signedVC = await agent.createVerifiableCredential({
+                credential,
+                proofFormat: 'jwt'
+            });
+
+            console.log("✅ Signed VC", signedVC);
+            
+            // ✅ Encrypt and store the private key
+            const encryptedPrivateKey = encryptPrivateKey(privateKey, password);
+
+            if(process.env.NODE_ENV === 'development') {
+                const environmentMetadata = await getDevelopmentEnvironmentMetadata();
+
+                const environmentCredential: DIDAssertionCredential = {
+                    id: credentialId,
+                    issuer: { id: did },
+                    credentialSubject: {
+                        id: did,
+                        assertionType: "environment-metadata",
+                        assertionDate: new Date().toISOString(),
+                        assertionDetails: environmentMetadata,
+                        assertionResult: 'Passed',
+                        verificationSteps: [
+                            {
+                                step: "Get development environment metadata using read-package-json-fast & process.env",
+                                result: 'Passed',
+                                timestamp: new Date().toISOString()
+                            }
+                        ]
+                    },
+                    '@context': ['https://www.w3.org/2018/credentials/v1'],
+                    type: ['VerifiableCredential'],
+                    expirationDate: new Date().toISOString()
+                };
+
+                const signedEnvironmentVC = await agent.createVerifiableCredential({
+                    credential: environmentCredential,
+                    proofFormat: 'jwt'
+                });
+
+                console.log("✅ Signed Environment VC", signedEnvironmentVC);
+
+                const storedKeys = {
+                    encryptedPrivateKey,
+                    meta: { did, isPrimary: true, didCredential: signedVC, environmentCredential: signedEnvironmentVC },
+                };
+
+                fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
+            } else {
+                const storedKeys = {
+                    encryptedPrivateKey,
+                    meta: { did, isPrimary: true, didCredential: signedVC },
+                };
+
+                fs.writeFileSync(KEYRING_FILE, JSON.stringify(storedKeys, null, 2));
+            }
+
+            const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+            if (!encryptionKey) {
+                const { encryptionKey } = await inquirer.prompt([
+                    {
+                        type: 'password',
+                        name: 'encryptionKey',
+                        message: 'Enter an encryption key to encrypt the password:',
+                        mask: '*', 
+                    },
+                ]);
+
+                if(!encryptionKey) {
+                    console.warn("❌ No encryption key provided, password will not be encrypted");
+                    fs.writeFileSync(passwordFilePath, JSON.stringify(password));
+                }
+
+                 // Encrypt the password
+                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                // Store the encrypted password in a file
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptionKey));
+            } else {
+                // Encrypt the password
+                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                // Store the encrypted password in a file
+                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
+            }
+
+            return signedVC;
+        } catch (error) {
+            console.error("❌ Failed to import DID into Veramo:", error);
+            return false;
+        }
+    } catch (error) {
+        console.error("❌ Error setting primary DID:", error);
+        return false;
+    }
+}
+
+export async function getPrimaryDID(): Promise<string | null> {
+    try {
+        const kr = await ensureKeyring();
+        const pairs = kr.getPairs();
+        const primaryPair = pairs.find(p => p.meta?.isPrimary);
+        const did = (primaryPair?.meta?.did || '') as string;
+        
+        if(did) return did;
+        
+        try {
+            const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
+            const { meta } = JSON.parse(storedData);
+            if(!meta) return null;
+            const { did, didCredential } = meta;
+            if(!didCredential) return null;
+            if(did) return did;
+        } catch (error) {
+            console.error("❌ Error accessing keyring. File may not exist",);
+            return null;
+        }
+        
+        const domain = process.env.SDK_DOMAIN;
+        const detectedHostname = os.hostname();
+        console.log("Detected Hostname:", detectedHostname);
+        console.log("🔑 Domain", domain);
+        if (!domain) {
+            console.error("❌ No domain set for SDK validation.");
+            return null;
+        }
+        return await fetchDomainDID(domain);
+    } catch (error) {
+        console.error("❌ Error accessing keyring:", error);
+        return null;
+    }
+}
+
+export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
+    try {
+        const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
+        const { encryptedPrivateKey, meta } = JSON.parse(storedData);
+        if(!encryptedPrivateKey) return false;
+        
+        const did = meta.did;
+        const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
+        if (!privateKey) {
+            console.error("❌ Failed to decrypt private key");
+            return false;
+        }
+
+        // Import the DID using the decrypted private key
+        try {
+            await agent.didManagerImport({
+                did: did,
+                provider: "did:cheqd",
+                controllerKeyId: privateKey, // Associate with private key
+                keys: [
+                    {
+                        kid: "default",
+                        type: "Ed25519",
+                        privateKeyHex: base64ToHex(privateKey), // Remove "0x" prefix if present
+                        kms: "local"
+                    }
+                ]
+            });
+
+            console.log("✅ Primary DID successfully verified and ready to use");
+        } catch (error) {
+            console.error("❌ Failed to import DID into Veramo:", error);
+            return false;
+        }
+
+        if (did) return did;
+        
+        const domain = process.env.SDK_DOMAIN;
+        const detectedHostname = os.hostname();
+        console.log("Detected Hostname:", detectedHostname);
+        console.log("🔑 Domain", domain);
+        if (!domain) {
+            console.error("❌ No domain set for SDK validation.");
+            return false;
+        }
+        return await fetchDomainDID(domain);
+    } catch (error) {
+        console.error("❌ Error accessing keyring:", error);
+        return false;
+    }
 }
