@@ -34,11 +34,8 @@ export function decryptPrivateKey(encryptedData: { iv: string, encrypted: string
 
 export async function convertRecoveryToPrivateKey(mnemonic) {
     try {
-      console.log("🔑 Converting recovery to private key", mnemonic);
       const entropy = bip39.mnemonicToEntropy(mnemonic, wordlist)
-      console.log("🔑 Entropy", entropy);
       const privateKey = Buffer.from(entropy, 'hex');
-      console.log("🔑 Private Key", privateKey);
 
       const privateKeyBase64 = async () => {
         const publicKey = await ed25519.getPublicKey(privateKey);

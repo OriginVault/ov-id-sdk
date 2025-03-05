@@ -1,6 +1,6 @@
 import { agent } from './veramoAgent.js';
 import { verifyPrimaryDID } from './storePrivateKeys.js';
-import { getDevelopmentEnvironmentMetadata } from './environment.js';
+import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from './environment.js';
 
 export async function signVC(subject: any, password): Promise<any> {
     try {
@@ -9,7 +9,9 @@ export async function signVC(subject: any, password): Promise<any> {
 
         if(!did) return false;
 
-        const environment = await getDevelopmentEnvironmentMetadata();
+        const environment = process.env.NODE_ENV === 'development' ? 
+            await getDevelopmentEnvironmentMetadata() : 
+            await getProductionEnvironmentMetadata();
 
         const signedVC = await agent.createVerifiableCredential({
             credential: {
