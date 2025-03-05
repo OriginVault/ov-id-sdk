@@ -3,7 +3,7 @@
 </div>
 <br />
 
-# 🚀 `@originvault/ov-id-sdk (in alpha)`
+# 🚀 `@originvault/ov-id-sdk` (in alpha)
 **Decentralized Identity SDK for OriginVault**
 
 `@originvault/ov-id-sdk` a TypeScript SDK for decentralized identity (DID) management, verifiable credential (VC) signing and verification, and cryptographic commit signing. It enables secure DID operations, private key management, W3C-compliant credential handling, and signed commits/releases with verifiable metadata.
