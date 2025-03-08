@@ -8,6 +8,8 @@
 
 `@originvault/ov-id-sdk` a TypeScript SDK for decentralized identity (DID) management, verifiable credential (VC) signing and verification, and cryptographic commit signing. It enables secure DID operations, private key management, W3C-compliant credential handling, and signed commits/releases with verifiable metadata.
 
+### [Package Cheqd DID](https://resolver.cheqd.net/1.0/identifiers/did:cheqd:mainnet:280dd37c-aa96-5e71-8548-5125505a968e)
+
 🔹 Features
 
 - ✅ DID Creation & Import → Generate or restore did:cheqd and did:vda identities
