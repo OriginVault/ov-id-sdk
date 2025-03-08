@@ -1,6 +1,7 @@
 {
   "name": "@originvault/ov-id-sdk",
-  "version": "0.0.1-alpha.45",
+  "did": "did:cheqd:mainnet:280dd37c-aa96-5e71-8548-5125505a968e",
+  "version": "0.0.1-alpha.65",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
   "main": "./dist/src/index.js",
@@ -8,10 +9,11 @@
   "files": [
     "dist/**/*",
     "scripts/**/*",
-    "src/**/*"
+    "src/**/*",
+    "package.json"
   ],
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
+    "build": "npm run clean && tsc --project tsconfig.build.json",
     "tsc": "tsc --project tsconfig.build.json",
     "clean": "rm -rf ./dist/",
     "cm": "cz",
@@ -21,9 +23,8 @@
     "typecheck": "tsc --noEmit",
     "prestart": "npm run tsc",
     "start": "node dist/src/index.js",
-    "sign-commit": "npx tsx scripts/sign-commit-metadata.js",
     "sign-release": "npx tsx scripts/sign-release-metadata.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && npm run sign-release"
   },
   "repository": {
     "type": "git",
@@ -59,27 +60,21 @@
     "@veramo/remote-server": "^6.0.0",
     "@verida/did-client": "^4.4.1",
     "bip39": "^3.1.0",
-    "c2pa-node": "^0.5.23",
-    "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
     "inquirer": "^12.4.2",
     "node-fetch": "^3.3.2",
+    "ora": "^8.2.0",
     "read-package-json-fast": "^4.0.0",
-    "tweetnacl": "^1.0.3",
+    "tar-stream": "^3.1.7",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@ryansonshine/commitizen": "^4.2.8",
-    "@ryansonshine/cz-conventional-changelog": "^3.3.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/jest": "^27.5.2",
     "@types/node": "^20.10.5",
     "@types/uuid": "^10.0.0",
-    "conventional-changelog-conventionalcommits": "^5.0.0",
     "eslint": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",

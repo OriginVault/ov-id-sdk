@@ -1,103 +1,107 @@
-import { agent } from './veramoAgent.js';
 import { v5 as uuidv5 } from 'uuid';
 import { getVerifiedAuthentication, } from './storePrivateKeys.js';
-import { privateKeyStore, cheqdMainnetProvider } from './veramoAgent.js';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { getDID } from './identityManager.js';
+import { getDIDKeys } from './identityManager.js';
 
-// Define __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let jsonFilePath;
 
-export async function createResource({ didString, filePath, name }) {
-    const did = await getDID(didString);
-    const verificationMethod = await getVerifiedAuthentication(didString);
-    const key = did.keys[0];
-
-    // Extract the last part of the DID string to use as the collectionId
-    const collectionId = didString.split(':').pop() || '';
-    const resourceId = uuidv5(didString + '#resource', uuidv5.URL);
-    const privateKey = await privateKeyStore.getKey({ alias: key.kid });
-
-    // Call createResource function
-    const jsonFilePath = path.resolve(__dirname, filePath); // Use the passed filePath
-
-    const signInputs = [{
-        verificationMethodId: verificationMethod.id, // Replace with actual ID
-        keyType: 'Ed25519', // Ensure this matches the DIDDoc
-        privateKeyHex: privateKey.privateKeyHex,
-    } as any];
-
-    const params = {
-        options: {
-            kms: 'local',
-            provider: cheqdMainnetProvider,
-            network: "mainnet",
-            payload: {
-                did: didString,
-                key: key.kid,
-                collectionId, // Use the last part of the DID string as collection ID
-                id: resourceId, // Generated resource ID
-                name, // Replace with a human-readable name
-                resourceType: 'CL-Schema', // Replace with actual resource type
-                version: '1.0', // Optional version
-                data: Buffer.from(fs.readFileSync(jsonFilePath)),
-            },
-            signInputs,
-            file: jsonFilePath, // Updated file path
-            fee: {
-                amount: [{ denom: 'ncheq', amount: '2500000000' }], // Replace with actual fee amount
-                gas: '1000000', // Replace with actual gas limit
-            }
-        }
-    };
-
-    return await cheqdMainnetProvider.createResource(params, { agent, kms: 'local' } as any);
+const cleanUp = () => {
+    if (jsonFilePath) fs.unlinkSync(jsonFilePath);
 }
 
-export async function updateResource({ didString, filePath, name, resourceId }) {
-    const did = await getDID(didString);
-    const verificationMethod = await getVerifiedAuthentication(didString);
-    const key = did.keys[0];
+export async function createResource({ data, did, name, directory, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, provider: any, agent: any, keyStore: any, resourceId?: string, directory?: string, resourceType?: string }) {    
+    try {
+        const resolvedDid = await getDIDKeys(did, agent);
 
-    // Extract the last part of the DID string to use as the collectionId
-    const collectionId = didString.split(':').pop() || '';
-    const privateKey = await privateKeyStore.getKey({ alias: key.kid });
-
-    // Call updateResource function
-    const jsonFilePath = path.resolve(__dirname, filePath); // Use the passed filePath
-
-    const signInputs = [{
-        verificationMethodId: verificationMethod.id, // Replace with actual ID
-        keyType: 'Ed25519', // Ensure this matches the DIDDoc
-        privateKeyHex: privateKey.privateKeyHex,
-    } as any];
-
-    const params = {
-        options: {
-            kms: 'local',
-            provider: cheqdMainnetProvider,
-            network: "mainnet",
-            payload: {
-                did: didString,
-                key: key.kid,
-                collectionId, // Use the last part of the DID string as collection ID
-                id: resourceId, // Use the provided resource ID
-                name, // Replace with a human-readable name
-                resourceType: 'CL-Schema', // Replace with actual resource type
-                version: '1.0', // Optional version
-                data: Buffer.from(fs.readFileSync(jsonFilePath)),
-            },
-            signInputs,
-            file: jsonFilePath, // Updated file path
-            fee: {
-                amount: [{ denom: 'ncheq', amount: '2500000000' }], // Replace with actual fee amount
-                gas: '1000000', // Replace with actual gas limit
-            }
+        if (!resolvedDid) {
+            console.log("Could not resolve DID", did);
+            return undefined;
         }
-    };
+        
+        const { meta } = resolvedDid;
+        const { keyName: id, kid: key } = meta as { keyName: string, kid: string };
+        
+        const verificationMethod = await getVerifiedAuthentication(id);
 
-    return await cheqdMainnetProvider.createResource(params, { agent, kms: 'local' } as any);
+        // Extract the last part of the DID string to use as the collectionId
+        const collectionId = id.split(':').pop() || '';
+       
+        const fileRelativePath = uuidv5(name, uuidv5.URL); // Use sanitized name
+        const resourceUUID = resourceId || uuidv5(fileRelativePath + new Date().toISOString(), uuidv5.URL);
+        const privateKey = await keyStore.getKey({ alias: key });
+
+        jsonFilePath = await generateResourceFile(collectionId, fileRelativePath, data);
+        // Check if the file exists before reading
+        if (!fs.existsSync(jsonFilePath)) {
+            throw new Error(`File not found: ${jsonFilePath}`);
+        }
+
+        const signInputs = [{
+            verificationMethodId: verificationMethod.id,
+            keyType: 'Ed25519',
+            privateKeyHex: privateKey.privateKeyHex,
+        }];
+        const params = {
+            options: {
+                kms: 'local',
+                provider,
+                network: "mainnet",
+                payload: {
+                    did: id,
+                    key: key,
+                    collectionId,
+                    id: resourceUUID,
+                    name,
+                    resourceType,
+                    data: Buffer.from(fs.readFileSync(jsonFilePath)),
+                },
+                signInputs,
+                file: jsonFilePath, 
+                fee: {
+                    amount: [{ denom: 'ncheq', amount: '2500000000' }],
+                    gas: '2000000',
+                }
+            }
+        };
+        try {
+            const result = await provider.createResource(params, { agent, kms: 'local' });
+            cleanUp();
+            if (result) {
+                // Return the link to the cheqd resolver
+                return `https://resolver.cheqd.net/1.0/identifiers/${did}/resources/${resourceUUID}`;
+            }
+            return undefined;
+        } catch (error) {
+            cleanUp();
+            throw `Error creating resource: ${error}`;
+        }
+    }
+    catch (error) {
+        console.error("Check data formatting and RPC endpoint connection. Error creating resource:", error);
+        cleanUp();
+        return undefined;
+    }
 }
+
+export function generateResourceFile(dirPath, filePath, data) {
+    const jsonFilePath = path.resolve(dirPath, filePath);
+    // Ensure the directory exists before writing the file
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+    }
+    // Convert data to JSON and write to file
+    fs.writeFileSync(jsonFilePath, JSON.stringify(data, null, 2));
+    // Check if the file was created successfully
+    if (!fs.existsSync(jsonFilePath)) {
+        throw new Error(`File generation failed: ${jsonFilePath}`);
+    }
+    console.log(`File generated at: ${jsonFilePath}`);
+    return jsonFilePath;
+}
+
+export async function getResources({ did, agent }) {
+    const resolvedDid = await agent.resolveDid({ didUrl: typeof did === 'string' ? did : did.did });
+    console.log('DID', resolvedDid);
+}
+

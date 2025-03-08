@@ -20,7 +20,7 @@ async function getCosmosPayerSeed(): Promise<string | null> {
         console.warn("Cosmos payer seed not found. Cannot retrieve Cosmos payer seed.");
         return null;
     }
-    return seed;
+    return seed.address;
 }
 
 async function storeCosmosPayerSeed(seed: string): Promise<void> {
@@ -36,7 +36,7 @@ async function storeCosmosPayerSeed(seed: string): Promise<void> {
         return;
     }
     const privateKeyBuffer = Uint8Array.from(Buffer.from(privateKey, 'base64'));
-    await storePrivateKey(COSMOS_SEED, privateKeyBuffer);
+    await storePrivateKey(COSMOS_SEED, privateKeyBuffer, "default");
     console.log("Cosmos payer seed stored successfully.");
 
     return;

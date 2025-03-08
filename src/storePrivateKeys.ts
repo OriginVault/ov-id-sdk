@@ -2,13 +2,14 @@ import { Keyring } from '@polkadot/keyring';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import os from 'os';
 import path from 'path';
-import { agent } from './veramoAgent.js';
+import { userAgent } from './userAgent.js';
 import * as ed25519 from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
+import { KeyringPair$Json } from '@polkadot/keyring/types.js';
 
 dotenv.config();
 
@@ -17,10 +18,10 @@ ed25519.etc.sha512Sync = sha512;
 // Initialize keyring
 let keyring: Keyring | undefined;
 
-export const KEYRING_FILE = path.join(os.homedir(), '.cheqd-did-keyring.json');
+export const KEYRING_FILE = path.join(os.homedir(), '.originvault-cheqd-did-keyring.json');
 
 // Define the path for the encryption key file
-const encryptionKeyFilePath = path.join(os.homedir(), '.encryption-key');
+const encryptionKeyFilePath = path.join(os.homedir(), '.originvault-encryption-key');
 
 export let encryptionKey: string | undefined;
 
@@ -43,11 +44,6 @@ async function initializeEncryptionKey() {
         encryptionKey = key;
     }
 }
-
-// Call the initialization function at the start
-initializeEncryptionKey().catch(error => {
-    console.error("❌ Error initializing encryption key:", error);
-});
 
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
@@ -73,8 +69,14 @@ export async function ensureKeyring(): Promise<Keyring> {
 }
 
 // Exported functions
-export const getVerifiedAuthentication = async (did: string) => {
-    const resolvedDid = await agent.resolveDid({ didUrl: did });
+export const getVerifiedAuthentication = async (did: { id: string } | string) => {
+    let resolvedDid;
+    if (typeof did === 'string') {
+        resolvedDid = await userAgent.resolveDid({ didUrl: did });
+    } else if (typeof did === 'object') {
+        resolvedDid = did.id;
+    }
+    
     if (!resolvedDid) {
         console.error("❌ DID could not be resolved", did);
         return false;
@@ -122,11 +124,10 @@ export async function getPrivateKeyForPrimaryDID(password: string) {
     return privateKey;
 }
 
-export async function storePrivateKey(keyName: string, privateKey: Uint8Array): Promise<void> {
+export async function storePrivateKey(keyName: string, privateKey: Uint8Array, kid: string): Promise<void> {
     try {
         // Check the length of the private key
         if (privateKey.length === 64) {
-            console.warn("Using only the first 32 bytes of the 64-byte private key.");
             privateKey = privateKey.slice(0, 32); // Use only the first 32 bytes
         } else if (privateKey.length !== 32) {
             throw new Error("Invalid private key length. Expected 32 bytes or 64 bytes.");
@@ -134,38 +135,45 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array): 
 
         const kr = await ensureKeyring();
 
-        const pair = kr.addFromSeed(privateKey, { keyName, isPrimary: false });
+        const pair = kr.addFromSeed(privateKey, { keyName, isPrimary: false, kid });
         kr.addPair(pair);
+        
+        fs.writeFileSync(KEYRING_FILE, JSON.stringify(kr.getPairs().map(pair => pair.toJson()), null, 2));
 
-        fs.writeFileSync(KEYRING_FILE, JSON.stringify(kr.getPairs(), null, 2));
-        console.log("🔑 Private Key Stored");
+        // Check if the private key is stored correctly
+        const storedData = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
+        const isKeyStored = storedData.some((pair: any) => pair.address === pair.address); // Adjust this condition as needed
+        if (!isKeyStored) {
+            console.error("❌ Private Key not found in the keyring file.");
+        }
     } catch (error) {
         console.error("❌ Error storing private key:", error);
         throw error;
     }
 }
 
-export async function retrievePrivateKey(keyName: string): Promise<string | null> {
+export async function retrievePrivateKey(keyName: string): Promise<KeyringPair$Json | undefined> {
     try {
         const kr = await ensureKeyring();
-        const pairs = kr.getPairs();
+        const pairs = kr.getPairs().map(pair => pair.toJson());
 
         const pair = pairs.find(p => p.meta.keyName === keyName);
-        return pair ? pair.address : null;
+        return pair;
     } catch (error) {
         console.error("❌ Error retrieving private key:", error);
-        return null;
+        return undefined;
     }
 }
 
 export async function listAllKeys(): Promise<{ did: string; privateKey: string; isPrimary: boolean }[]> {
     try {
         const kr = await ensureKeyring();
-        const pairs = kr.getPairs();
+        const pairs = kr.getPairs().map(pair => pair.toJson());
         return pairs.map(pair => ({
-            did: pair.meta.did as string,
+            did: pair.meta.keyName as string,
             privateKey: pair.address,
-            isPrimary: pair.meta.isPrimary as boolean
+            isPrimary: pair.meta.isPrimary as boolean,
+            kid: pair.meta.kid as string
         }));
     } catch (error) {
         console.error("❌ Error listing keys:", error);
@@ -176,7 +184,7 @@ export async function listAllKeys(): Promise<{ did: string; privateKey: string; 
 export async function deleteKey(did: string): Promise<boolean> {
     try {
         const kr = await ensureKeyring();
-        const pairs = kr.getPairs();
+        const pairs = kr.getPairs().map(pair => pair.toJson());
         const pair = pairs.find(p => p.meta.did === did);
         if (pair) {
             kr.removePair(pair.address);

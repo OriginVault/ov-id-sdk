@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import { DevelopmentEnvironmentMetadata } from '@originvault/ov-types';
-import fs from 'fs';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname); // Define __dirname for ES module
 

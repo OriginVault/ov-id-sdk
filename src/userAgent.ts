@@ -8,9 +8,8 @@ import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
-import { getCosmosPayerSeed } from './walletManager.js';
-
 import dotenv from 'dotenv';
+import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
 
 dotenv.config();
 
@@ -41,10 +40,8 @@ export declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
-
-let cheqdMainnetProvider: CheqdDIDProvider;
-let agent: any;
-
+let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let userAgent: any;
 
 const initializeAgent = async ({ payerSeed }: { payerSeed?: string } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
@@ -57,7 +54,7 @@ const initializeAgent = async ({ payerSeed }: { payerSeed?: string } = {}) => {
         cosmosPayerSeed,
     })
 
-    agent = createAgent({
+    userAgent = createAgent({
         plugins: [
             new KeyManager({
                 store: keyStore,
@@ -95,4 +92,16 @@ const initializeAgent = async ({ payerSeed }: { payerSeed?: string } = {}) => {
 
 initializeAgent();
 
-export { agent, initializeAgent, cheqdMainnetProvider };
+const userStore = {
+    initialize: initializeAgent,
+    agent: userAgent,
+    cheqdMainnetProvider,
+    privateKeyStore,
+    keyStore,
+    listDids: (provider?: string) => listDIDs(userAgent, provider),
+    getDID: (didString: string) => getDIDKeys(didString, userAgent),
+    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => createDID({ ...props, agent: userAgent }),
+    importDID: (didString: string, privateKey: string, method: string) => importDID(didString, privateKey, method, userAgent),
+}
+
+export { userAgent, initializeAgent, cheqdMainnetProvider, userStore };
