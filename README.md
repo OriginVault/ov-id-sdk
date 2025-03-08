@@ -26,9 +26,6 @@
 npm install @originvault/ov-id-sdk
 ```
 
-## [Example Release Cert](https://github.com/OriginVault/ov-id-sdk/blob/main/.my-certificates/@originvault/ov-id-sdk-0.0.1-alpha.23-2025-03-03T05%EF%80%BA14%EF%80%BA01.454Z.json)
-
-
 ---
 
 ## 🚀 Quick Start
