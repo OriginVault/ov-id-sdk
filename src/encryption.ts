@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import * as bip39 from 'bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import * as ed25519 from '@noble/ed25519';
+import { getPublicKeyMultibase } from './storePrivateKeys.js';
+import { encryptData } from './dataManager.js';
+import multibase from 'multibase';
 
 export function encryptPrivateKey(privateKey, password) {
     const iv = crypto.randomBytes(16);
@@ -29,6 +32,16 @@ export function decryptPrivateKey(encryptedData: { iv: string, encrypted: string
         console.error("❌ Decryption failed");
         return null;
     }
+}
+
+
+export async function encryptDataForDID(did: string, message: string): Promise<{ encryptedMessage: string, nonce: string } | null> {
+    const publicKeyMultibase = await getPublicKeyMultibase(did);
+    if (!publicKeyMultibase) return null;
+    
+    const decodedPublicKey = multibase.decode(Buffer.from(publicKeyMultibase, 'utf-8')).slice(2);
+    const encryptedData = await encryptData(decodedPublicKey, message);
+    return encryptedData;
 }
 
 

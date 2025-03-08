@@ -1,6 +1,6 @@
 import { getCertDir } from './config';
 import { execSync } from 'child_process';
-import { agent } from './veramoAgent';
+import { userAgent } from './userAgent';
 import fs from 'fs';
 import path from 'path';
 
@@ -31,7 +31,7 @@ export async function verifySoftwareExecution() {
         }
 
         const metadata = JSON.parse(fs.readFileSync(certPath, 'utf-8'));
-        const isValid = await agent.verifyVerifiableCredential(metadata);
+        const isValid = await userAgent.verifyVerifiableCredential(metadata);
 
         logVerificationResult(commitHash, isValid);
 

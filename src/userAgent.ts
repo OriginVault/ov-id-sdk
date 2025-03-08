@@ -8,8 +8,8 @@ import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
-
 import dotenv from 'dotenv';
+import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
 
 dotenv.config();
 
@@ -40,18 +40,24 @@ export declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
-export const cheqdMainnetProvider = new CheqdDIDProvider({
-    defaultKms: 'local',
-    networkType: 'mainnet' as CheqdNetwork,
-    dkgOptions: { chain: 'cheqdMainnet' },
-    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-    cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
-})
+let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let userAgent: any;
 
-export const agent = createAgent({
-    plugins: [
-        new KeyManager({
-            store: keyStore,
+const initializeAgent = async ({ payerSeed }: { payerSeed?: string } = {}) => {
+    let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
+
+    cheqdMainnetProvider = new CheqdDIDProvider({
+        defaultKms: 'local',
+        networkType: 'mainnet' as CheqdNetwork,
+        dkgOptions: { chain: 'cheqdMainnet' },
+        rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
+        cosmosPayerSeed,
+    })
+
+    userAgent = createAgent({
+        plugins: [
+            new KeyManager({
+                store: keyStore,
             kms: {
                 local: new KeyManagementSystem(privateKeyStore),
             },
@@ -80,5 +86,22 @@ export const agent = createAgent({
             })
         }),
         new CredentialPlugin(),
-    ],
-});
+        ],
+    })
+}
+
+initializeAgent();
+
+const userStore = {
+    initialize: initializeAgent,
+    agent: userAgent,
+    cheqdMainnetProvider,
+    privateKeyStore,
+    keyStore,
+    listDids: (provider?: string) => listDIDs(userAgent, provider),
+    getDID: (didString: string) => getDIDKeys(didString, userAgent),
+    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => createDID({ ...props, agent: userAgent }),
+    importDID: (didString: string, privateKey: string, method: string) => importDID(didString, privateKey, method, userAgent),
+}
+
+export { userAgent, initializeAgent, cheqdMainnetProvider, userStore };

@@ -1,5 +1,5 @@
-import { agent } from './veramoAgent.js';
-import { verifyPrimaryDID } from './storePrivateKeys.js';
+import { userAgent } from './userAgent.js';
+import { verifyPrimaryDID } from './identityManager.js';
 import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from './environment.js';
 
 export async function signVC(subject: any, password): Promise<any> {
@@ -13,7 +13,7 @@ export async function signVC(subject: any, password): Promise<any> {
             await getDevelopmentEnvironmentMetadata() : 
             await getProductionEnvironmentMetadata();
 
-        const signedVC = await agent.createVerifiableCredential({
+        const signedVC = await userAgent.createVerifiableCredential({
             credential: {
                 issuer: { id: did },
                 credentialSubject: {
@@ -35,7 +35,7 @@ export async function signVC(subject: any, password): Promise<any> {
 
 export async function verifyVC(credential: any): Promise<any> {
     try {
-        const verified = await agent.verifyCredential({
+        const verified = await userAgent.verifyCredential({
             credential,
             policies: { proofFormat: 'jwt' }
         });

@@ -14,9 +14,8 @@
 - ✅ Secure Key Storage → Encrypt and store private keys securely, retrieve when needed
 - ✅ Primary DID Management → Set and retrieve the default DID for signing credentials
 - ✅ Verifiable Credential Signing & Verification → Issue & verify W3C-compliant credentials
-- ✅ Cryptographic Commit & Release Signing → Sign and verify Git commits & software releases using DID credentials
+- ✅ Cryptographic Release Signing → Sign and verify Git software releases using DID credentials
 - ✅ Development Environment Metadata → Capture system & package metadata for auditability
-- ✅ Domain-Linked DID Discovery → Auto-fetch the authoritative DID from .well-known/did-configuration.json
 - ✅ Web5 Trust Layer Integration → Designed for OriginVault’s decentralized identity and verification ecosystem
 ---
 
@@ -26,7 +25,6 @@ npm install @originvault/ov-id-sdk
 ```
 
 ## [Example Release Cert](https://github.com/OriginVault/ov-id-sdk/blob/main/.my-certificates/@originvault/ov-id-sdk-0.0.1-alpha.23-2025-03-03T05%EF%80%BA14%EF%80%BA01.454Z.json)
-
 
 
 ---
@@ -91,46 +89,38 @@ console.log("VC Verification:", isValid);
 
 ---
 
-### **5️⃣ Sign Commits and Releases**
+### **5️⃣ Sign Releases**
 ```typescript
-import { signLatestCommit, signCurrentRelease } from "@originvault/ov-id-sdk";
-
-// ✅ Sign the latest commit
-await signLatestCommit();
-console.log("Latest commit signed successfully.");
+import { parentStore, packageStore } from "@originvault/ov-id-sdk";
 
 // ✅ Sign the current release
-await signCurrentRelease();
-console.log("Current release signed successfully.");
+const { signRelease } = await parentStore.initialize();
+await signRelease();
+
+console.log("Latest commit signed successfully.");
 ```
-
----
-
-### **6️⃣ Automatically Fetch Domain-Linked DID**
-```typescript
-import { getPrimaryDID } from "@originvault/ov-id-sdk";
-
-// ✅ If no primary DID is set, check `.well-known/did-configuration.json` on the SDK's domain
-process.env.SDK_DOMAIN = "example.com"; // Set the domain for validation
-const domainDID = await getPrimaryDID();
-console.log("Domain-Verified DID:", domainDID);
-```
-
 ---
 
 ### **7️⃣ Get Development Environment Metadata**
 ```typescript
-import { getDevelopmentEnvironmentMetadata } from "@originvault/ov-id-sdk";
+import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from "@originvault/ov-id-sdk";
 
+// ✅ Get development environment metadata
 const environment = getDevelopmentEnvironmentMetadata();
 console.log("Development Environment:", environment);
+
+// ✅ Get production environment metadata
+const productionEnvironment = getProductionEnvironmentMetadata();
+console.log("Production Environment:", productionEnvironment);
 ```
 
 ## 🛠 Configuration
 | **Environment Variable** | **Description** |
 |------------------|-----------------------------------------------|
-| `DID_DOMAIN` | (Optional) Domain to fetch `.well-known/did-configuration.json` |
-| `DID_METHOD` | (Optional) Default DID method (`cheqd` or `vda`) |
+| `COMMIT_HASH` | (Optional) Commit hash to sign |
+| `COSMOS_PAYER_SEED` | (Optional) Cosmos payer seed |
+| `CHEQD_RPC_URL` | (Optional) Cheqd RPC URL |
+| `ENCRYPTION_KEY` | (Optional if key can be shared through the terminal) Encryption key for private keys |
 
 ---
 
