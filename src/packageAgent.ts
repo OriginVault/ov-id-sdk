@@ -46,12 +46,13 @@ let packageAuth: string | object | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
 let publishWorkingKey: (() => Promise<string | undefined>) | null = null;
-let publishRelease: (releaseCredential: any, id: string) => Promise<string | undefined> = async () => {
+let publishRelease: (releaseCredential: any, id: string, version: string) => Promise<string | undefined> = async () => {
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
 const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
+    let didMnemonic = didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = new CheqdDIDProvider({
         defaultKms: 'local',
@@ -95,8 +96,8 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
 
     const packageJsonDIDString = await getPackageDIDFromPackageJson();
 
-    if (didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE) {
-        const packagePrivateKey = await convertRecoveryToPrivateKey(didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE);
+    if (didMnemonic) {
+        const packagePrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
         const { credentials } = await importDID(packageJsonDIDString, packagePrivateKey, 'cheqd', packageAgent);
 
         signedVCs.concat(credentials);
@@ -194,6 +195,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
                 keyStore: privateKeyStore,
                 resourceId: uuidv5(id, uuidv5.URL),
                 resourceType: 'Working-Directory-Derived-Key',
+                version: credentialId
             });
  
             if(!result) {
@@ -207,7 +209,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
     signedVCs.push(signedVC);
     currentDIDKey = didKey;
 
-    publishRelease = async (releaseCredential: any, name: string) => {
+    publishRelease = async (releaseCredential: any, name: string, version: string) => {
         const result = await createResource({
             data: releaseCredential,
             did: packageJsonDIDString,
@@ -217,6 +219,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
             agent: packageAgent,
             keyStore: privateKeyStore,
             resourceType: 'NPM-Package-Publish-Event',
+            version
         });
 
         if(!result) {

@@ -154,7 +154,7 @@ async function getPackageDIDFromPackageJson(): Promise<string> {
 }
 
 async function getParentBundleHash(): Promise<{ hash: string, files: string[] }> {
-    const packagePath = path.resolve(__dirname, '../../../');
+    const packagePath = path.resolve(process.cwd());
     const bundleHash = await createBundleHash(`${packagePath}`);
     return bundleHash;
 }
@@ -165,9 +165,9 @@ async function getParentBundlePrivateKey(): Promise<{ key: Uint8Array, hash: str
 }
 
 async function getParentDIDFromPackageJson(): Promise<string> {
-    const packageJsonPath = path.join(__dirname, '../../../', 'package.json');
+    const packageJsonPath = path.join(process.cwd(), 'package.json'); // Use current working directory
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    return packageJson.parentDid;
+    return packageJson.did;
 }
 
 export { 

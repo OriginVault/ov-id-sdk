@@ -241,7 +241,7 @@ export async function getDIDKeys(did: string | any, agent: any): Promise<Keyring
     } else if (typeof did === 'object') {
         didString = did.did;
     }
-
+    console.log("didString", didString);
     try {
         const privateKey = await retrievePrivateKey(didString);
 

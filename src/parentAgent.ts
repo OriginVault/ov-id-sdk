@@ -7,7 +7,7 @@ import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { Resolver } from 'did-resolver';
-import { getParentDIDFromPackageJson, getParentBundleHash, getParentBundlePrivateKey } from './packageManager.js';
+import { getParentDIDFromPackageJson, getParentBundlePrivateKey, getParentBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
 import dotenv from 'dotenv';
 import { DIDAssertionCredential } from '@originvault/ov-types';
@@ -15,7 +15,6 @@ import { v5 as uuidv5 } from 'uuid';
 import { convertRecoveryToPrivateKey } from './encryption.js';
 import { importDID, listDIDs, getDIDKeys, createDID } from './identityManager.js';
 import { createResource } from './resourceManager.js';
-import { getVerifiedAuthentication } from './storePrivateKeys.js';
 import { getProductionEnvironmentMetadata } from './environment.js';
 
 dotenv.config();
@@ -46,12 +45,13 @@ let parentAuth: string | object | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
 let publishWorkingKey: (() => Promise<string | undefined>) | null = null;
-let publishRelease: (releaseCredential: any, name: string) => Promise<string | undefined> = async () => {
+let publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> = async () => {
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
 const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
+    let didMnemonic = didRecoveryPhrase || process.env.PARENT_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = new CheqdDIDProvider({
         defaultKms: 'local',
@@ -95,13 +95,13 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
 
     const parentDIDString = await getParentDIDFromPackageJson();
 
-    if (didRecoveryPhrase) {
-        const parentPrivateKey = await convertRecoveryToPrivateKey(didRecoveryPhrase);
+    if (didMnemonic) {
+        const parentPrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
         const { credentials } = await importDID(parentDIDString, parentPrivateKey, 'cheqd', parentAgent);
         
         signedVCs.concat(credentials);
     }
-    
+
     // Generate did:web after agent initialization
     const bundle = await getParentBundlePrivateKey();
 
@@ -114,7 +114,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     });
 
     const { didKey, id } = await generateDIDKey(bundle.key);
-    
+
     await parentAgent.didManagerImport({
         did: didKey,
         keys: [{
@@ -188,18 +188,18 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
             const result = await createResource({
                 data: signedVC,
                 did: parentDIDString,
-                name: id,
-                directory: 'parent-keys',
+                name: `${parentDIDString}-keys`,
+                directory: 'package-keys',
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: parentAgent,
                 keyStore: privateKeyStore,
-                resourceId: id
+                resourceId: uuidv5(id, uuidv5.URL),
+                resourceType: 'Working-Directory-Derived-Key',
+                version: credentialId
             });
 
-            if(result) {
-                console.log(`✅ Published working key: ${result}`);
-            } else {
-                console.log(`❌ Failed to publish working key`);
+            if(!result) {
+                throw new Error("Failed to publish release");
             }
 
             return result;
@@ -209,15 +209,17 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     signedVCs.push(signedVC);
     currentDIDKey = didKey;
 
-    publishRelease = async (releaseCredential: any, name: string) => {
+    publishRelease = async (releaseCredential: any, name: string, version: string) => {
         const result = await createResource({
             data: releaseCredential,
             did: parentDIDString,
             name,
+            version,
             directory: 'versions',  
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: parentAgent,
             keyStore: privateKeyStore,
+            resourceType: 'NPM-Package-Publish-Event',
         });
 
         if(!result) {
@@ -242,6 +244,7 @@ const parentStore = {
     createDID: (props: { method: string, alias: string, isPrimary: boolean }) => createDID({ ...props, agent: parentAgent }),
     importDID: (didString: string, privateKey: string, method: string) => importDID(didString, privateKey, method, parentAgent),
     getPrimaryDID: async () => await getParentDIDFromPackageJson(),
+    getBundleHash: async () => await getParentBundleHash(),
     publishWorkingKey
 }
 

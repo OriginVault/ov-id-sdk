@@ -10,7 +10,7 @@ const cleanUp = () => {
     if (jsonFilePath) fs.unlinkSync(jsonFilePath);
 }
 
-export async function createResource({ data, did, name, directory, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, provider: any, agent: any, keyStore: any, resourceId?: string, directory?: string, resourceType?: string }) {    
+export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, provider: any, agent: any, keyStore: any, resourceId?: string, directory?: string, resourceType?: string, version?: string, }) {    
     try {
         const resolvedDid = await getDIDKeys(did, agent);
 
@@ -42,20 +42,36 @@ export async function createResource({ data, did, name, directory, provider, age
             keyType: 'Ed25519',
             privateKeyHex: privateKey.privateKeyHex,
         }];
+
+        const payload: {
+            did: string,
+            key: string,
+            collectionId: string,
+            id: string,
+            name: string,
+            data: Buffer,
+            resourceType?: string,
+            version?: string,
+        } = {
+            did: id,
+            key: key,
+            collectionId,
+            id: resourceUUID,
+            name,
+            resourceType,
+            data: Buffer.from(fs.readFileSync(jsonFilePath)),
+        }
+
+        if(version) {
+            payload.version = version;
+        }
+
         const params = {
             options: {
                 kms: 'local',
                 provider,
                 network: "mainnet",
-                payload: {
-                    did: id,
-                    key: key,
-                    collectionId,
-                    id: resourceUUID,
-                    name,
-                    resourceType,
-                    data: Buffer.from(fs.readFileSync(jsonFilePath)),
-                },
+                payload,
                 signInputs,
                 file: jsonFilePath, 
                 fee: {
