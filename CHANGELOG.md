@@ -1,5 +1,8 @@
 ## Change Log
 
+## v0.0.7
+- [fix]: Fixes imports in `releaseManager.ts`.
+
 ## v0.0.6
 - [fix]: Exports `releaseManager` from the package.
 

@@ -3,8 +3,8 @@ import fs from 'fs';
 import { CredentialPayload, ICreateVerifiableCredentialArgs, IOVAgent, UnsignedCredential } from '@originvault/ov-types';
 import { v5 as uuidv5 } from 'uuid';
 import ora from 'ora';
-import { parentStore } from './parentAgent';
-import { userStore } from './userAgent';
+import { parentStore } from './parentAgent.js';
+import { userStore } from './userAgent.js';
 import { co2 } from "@tgwf/co2";
 
 interface AgentStore {
