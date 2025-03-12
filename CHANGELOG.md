@@ -1,5 +1,8 @@
 ## Change Log
 
+## v0.0.6
+- [fix]: Exports `releaseManager` from the package.
+
 ## v0.0.5
 - [feat]: Adds `signRelease` function to sign the release metadata.
 

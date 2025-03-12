@@ -10,9 +10,13 @@ import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { co2 } from "@tgwf/co2";
 
 let jsonFilePath;
+let dirId;
 
-const cleanUp = () => {
+const cleanUp = (collectionId?: string) => {
     if (jsonFilePath) fs.unlinkSync(jsonFilePath);
+    if(collectionId) {
+        fs.rmdirSync(collectionId, { recursive: true });
+    }
 }
 
 export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, version: string, provider: CheqdDIDProvider, agent: TAgent<IKeyManager & IDIDManager & ICredentialIssuer & ICredentialVerifier & IResolver & IDataStore & ICheqd>, keyStore: MemoryPrivateKeyStore, resourceId?: string, resourceType?: string, }) {    
@@ -31,7 +35,7 @@ export async function createResource({ data, did, name, version, provider, agent
 
         // Extract the last part of the DID string to use as the collectionId
         const collectionId = id.split(':').pop() || '';
-       
+        dirId = collectionId;
         const fileRelativePath = uuidv5(name, uuidv5.URL); // Use sanitized name
         const resourceUUID = resourceId || uuidv5(fileRelativePath + new Date().toISOString(), uuidv5.URL);
         const privateKey = await keyStore.getKey({ alias: key });
@@ -83,7 +87,7 @@ export async function createResource({ data, did, name, version, provider, agent
         
         try {
             const result = await provider.createResource(params, { agent });
-            cleanUp();
+            cleanUp(dirId);
             if (result) {
                 // Return the link to the cheqd resolver
                 return `https://resolver.cheqd.net/1.0/identifiers/${did}/resources/${resourceUUID}`;
@@ -91,13 +95,13 @@ export async function createResource({ data, did, name, version, provider, agent
             
             return undefined;
         } catch (error) {
-            cleanUp();
+            cleanUp(dirId);
             throw `Error creating resource: ${error}`;
         }
     }
     catch (error) {
         console.error("Check data formatting and RPC endpoint connection. Error creating resource:", error);
-        cleanUp();
+        cleanUp(dirId);
         return undefined;
     }
 }

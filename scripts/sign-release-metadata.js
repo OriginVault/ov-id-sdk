@@ -6,7 +6,6 @@ dotenv.config();
 
 (async () => {
     try {
-        console.log('packageStore.agent');
         await signRelease(packageStore);
     } catch (error) {
         console.error("❌ Error signing release metadata:", error);

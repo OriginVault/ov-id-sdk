@@ -10,7 +10,7 @@ import * as PackageAgent from './src/packageAgent.js';
 import * as PackageManager from './src/packageManager.js';
 import * as ResourceManager from './src/resourceManager.js';
 import * as ParentAgent from './src/parentAgent.js';
-
+import * as ReleaseManager from './src/releaseManager.js';
 export * from './src/userAgent.js';
 export * from './src/resolver.js';
 export * from './src/signer.js';
@@ -23,6 +23,7 @@ export * from './src/packageAgent.js';
 export * from './src/packageManager.js';
 export * from './src/resourceManager.js';
 export * from './src/parentAgent.js';
+export * from './src/releaseManager.js';
 
 export const OvId = {
     userAgent: UserAgent,
@@ -37,5 +38,6 @@ export const OvId = {
     packageManager: PackageManager,
     resourceManager: ResourceManager,
     parentAgent: ParentAgent,
+    releaseManager: ReleaseManager,
 }
 
