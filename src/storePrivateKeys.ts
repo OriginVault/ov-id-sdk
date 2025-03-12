@@ -11,7 +11,7 @@ import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
 import { decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
 import { KeyringPair$Json } from '@polkadot/keyring/types.js';
-import { IIdentifier, VerifiableCredential } from '@originvault/ov-types';
+import { VerifiableCredential } from '@originvault/ov-types';
 
 dotenv.config();
 
@@ -23,35 +23,51 @@ let keyring: Keyring | undefined;
 export const KEYRING_FILE = path.join(os.homedir(), '.originvault-cheqd-did-keyring.json');
 
 // Define the path for the encryption key file
-const encryptionKeyFilePath = path.join(os.homedir(), '.originvault-encryption-key');
 
-export let encryptionKey: string | undefined;
+const keyStore = {
+    encryptionKeyFilePath: path.join(os.homedir(), '.originvault-encryption-key'),
+    privateEncryptionKey: process.env.ENCRYPTION_KEY || 'admin-key',
+}
 
 async function initializeEncryptionKey() {
-    if (!fs.existsSync(encryptionKeyFilePath)) {
-        // Prompt for the encryption key if the file does not exist
-        const { encryptionKey: inputKey } = await inquirer.prompt([
-            {
-                type: 'password',
-                name: 'encryptionKey',
-                message: 'Enter an encryption key to encrypt the password:',
-                mask: '*',
-            },
-        ]);
-        // Store the encryption key in the file
-        fs.writeFileSync(encryptionKeyFilePath, JSON.stringify({ key: inputKey }), 'utf8');
-        encryptionKey = inputKey;
-    } else {
-        const { key } = JSON.parse(fs.readFileSync(encryptionKeyFilePath, 'utf8'));
-        encryptionKey = key;
+    try {
+        const keyPath = path.join(os.homedir(), '.originvault-encryption-key');
+        if (!fs.existsSync(keyPath)) {
+            if(process.env.ENCRYPTION_KEY) {
+                keyStore.privateEncryptionKey = process.env.ENCRYPTION_KEY;
+                keyStore.encryptionKeyFilePath = keyPath;
+                return;
+            }
+            const { encryptionKey: inputKey } = await inquirer.prompt([
+                {
+                    type: 'password',
+                    name: 'encryptionKey',
+                    message: 'Enter an encryption key to encrypt the password:',
+                    mask: '*',
+                },
+            ]);
+            // Store the encryption key in the file
+            fs.writeFileSync(keyPath, JSON.stringify({ key: inputKey }), 'utf8');
+            keyStore.privateEncryptionKey = inputKey;
+            keyStore.encryptionKeyFilePath = keyPath;
+        } else {
+            const { key } = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+            keyStore.privateEncryptionKey = key;
+        }
+    } catch (error) {
+        console.error("❌ Error initializing encryption key:", error);
+        throw error;
     }
+}
+
+export async function getEncryptionKey(): Promise<string> {
+    await initializeEncryptionKey();
+    return keyStore.privateEncryptionKey;
 }
 
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
-    if (!encryptionKey) {
-        await initializeEncryptionKey();
-    }
+    await initializeEncryptionKey();
     
     if (!keyring) {
         await cryptoWaitReady();
@@ -107,6 +123,7 @@ export const getPublicKeyMultibase = async (did: string): Promise<string | undef
 
 
 export async function getPrivateKeyForPrimaryDID(password: string) {
+    await ensureKeyring();
     const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
     const { encryptedPrivateKey } = JSON.parse(storedData);
     if(!encryptedPrivateKey) return false;

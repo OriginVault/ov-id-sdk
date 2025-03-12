@@ -2,11 +2,12 @@ import { v5 as uuidv5 } from 'uuid';
 import { getVerifiedAuthentication, } from './storePrivateKeys.js';
 import { CheqdNetwork } from '@cheqd/sdk';
 import type { MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { ICheqdCreateLinkedResourceResponse, ICheqdCreateLinkedResourceArgs, ResourcePayload, ISignInputs, IDIDManager, IKeyManager, ICredentialIssuer, ICredentialVerifier, IResolver, TAgent, IDataStore, ICheqd } from '@originvault/ov-types';
+import { ICheqdCreateLinkedResourceArgs, ResourcePayload, ISignInputs, IDIDManager, IKeyManager, ICredentialIssuer, ICredentialVerifier, IResolver, TAgent, IDataStore, ICheqd, IOVAgent } from '@originvault/ov-types';
 import fs from 'fs';
 import path from 'path';
 import { getDIDKeys } from './identityManager.js';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
+import { co2 } from "@tgwf/co2";
 
 let jsonFilePath;
 
@@ -48,8 +49,6 @@ export async function createResource({ data, did, name, version, provider, agent
         }];
 
         const payload: ResourcePayload = {
-            did: id,
-            key: key,
             collectionId,
             id: resourceUUID,
             name,
@@ -61,7 +60,7 @@ export async function createResource({ data, did, name, version, provider, agent
             payload.version = version;
         }
 
-        const params: ICheqdCreateLinkedResourceArgs = {
+        const options: ICheqdCreateLinkedResourceArgs = {
             kms: 'local',
             network: CheqdNetwork.Mainnet,
             payload,
@@ -72,9 +71,18 @@ export async function createResource({ data, did, name, version, provider, agent
                 gas: '2000000',
             }
         }
+
+        const params = {
+            options,
+        }
+        
+        const co2Emission = new co2();
+        const co2EmissionResult = co2Emission.perByte(JSON.stringify(params).length, false);
+        
+        console.log(`🌱 ${name}@${version} - Resource size in carbon grams: ${co2EmissionResult.toFixed(5)}g`);
         
         try {
-            const result: ICheqdCreateLinkedResourceResponse = await provider.createResource({ options: params }, { agent });
+            const result = await provider.createResource(params, { agent });
             cleanUp();
             if (result) {
                 // Return the link to the cheqd resolver
@@ -110,7 +118,7 @@ export function generateResourceFile(dirPath: string, filePath: string, data: an
     return jsonFilePath;
 }
 
-export async function getResources({ did, agent }: { did: string, agent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> }) {
+export async function getResources({ did, agent }: { did: string, agent: IOVAgent }) {
     const resolvedDid = await agent.resolveDid({ didUrl: did });
     console.log('DID', resolvedDid);
 }

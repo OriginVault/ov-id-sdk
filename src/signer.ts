@@ -5,9 +5,9 @@ export async function signVC(subject: any, password): Promise<any> {
     try {
         const did = await verifyPrimaryDID(password);
 
-        if(!did) return false;
+        if(typeof did !== 'string') return false;
 
-        const signedVC = await userAgent.createVerifiableCredential({
+        const signedVC = await userAgent?.createVerifiableCredential({
             credential: {
                 issuer: { id: did },
                 credentialSubject: {
@@ -28,7 +28,7 @@ export async function signVC(subject: any, password): Promise<any> {
 
 export async function verifyVC(credential: any): Promise<any> {
     try {
-        const verified = await userAgent.verifyCredential({
+        const verified = await userAgent?.verifyCredential({
             credential,
             policies: { proofFormat: 'jwt' }
         });

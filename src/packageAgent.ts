@@ -7,7 +7,7 @@ import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { Resolver } from 'did-resolver';
-import { IOVAgent, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
+import { IOVAgent, ICreateVerifiableCredentialArgs, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
 import { getSelfBundlePrivateKey, getPackageDIDFromPackageJson, getSelfBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
 import dotenv from 'dotenv';
@@ -19,6 +19,7 @@ import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { co2 } from "@tgwf/co2";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,7 @@ declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
+const packageJsonPath = path.join(__dirname, '../package.json');
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
 let packageAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
@@ -123,7 +125,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
         alias: didKey
     });
 
-    const packageJsonPath = path.join(__dirname, '../package.json');
     const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
     const environmentCredentialId = uuidv5(bundle.hash + new Date().toISOString(), uuidv5.URL);
 
@@ -174,10 +175,17 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
         expirationDate: new Date().toISOString() + '1000000000000'
     };
 
-    const signedVC = await packageAgent.createVerifiableCredential({
+    const args: ICreateVerifiableCredentialArgs = {
         credential,
         proofFormat: 'jwt'
-    });
+    };
+
+    const co2Emission = new co2();
+    const co2EmissionResult = co2Emission.perByte(JSON.stringify(args).length);
+    
+    console.log(`🌱 ${packageJsonDIDString} - Package Runtime Credential size in carbon: ${co2EmissionResult.toFixed(5)}g`);
+
+    const signedVC = await packageAgent.createVerifiableCredential(args);
 
     if(cheqdMainnetProvider !== null) {
         publishWorkingKey = async () => {
@@ -243,11 +251,11 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
         return result;
     }
 
-    return { packageAgent, packageJsonDIDString, currentDIDKey, signedVCs, publishWorkingKey, publishRelease };
+    return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease };
 }
 
 interface AgentStore {
-    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ packageAgent: IOVAgent, packageJsonDIDString: string, currentDIDKey: string, signedVCs: VerifiableCredential[], publishWorkingKey: (() => Promise<string | undefined>) | null, publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
+    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey: (() => Promise<string | undefined>) | null, publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
     agent: IOVAgent | null,
     keyStore: MemoryKeyStore,
     cheqdMainnetProvider: CheqdDIDProvider | null,
@@ -273,6 +281,7 @@ const packageStore: AgentStore = {
     publishWorkingKey,
     publishRelease,
     didKey: currentDIDKey,
+    packageJsonPath
 }
 
 export { packageStore };

@@ -7,7 +7,7 @@ import { v5 as uuidv5 } from 'uuid';
 import os from 'os';
 import inquirer from 'inquirer';
 import { getEnvironmentMetadata } from './environment.js';
-import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, ensureKeyring, encryptionKey } from './storePrivateKeys.js';
+import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
@@ -464,7 +464,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 
             fs.writeFileSync(PRIMARY_DID_WALLET_FILE, JSON.stringify(storedKeys, null, 2));
             
-
+            const encryptionKey = await getEncryptionKey();
             const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
             if (!encryptionKey) {
                 const { encryptionKey } = await inquirer.prompt([
