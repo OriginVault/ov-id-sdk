@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
-import { CredentialPayload, ICreateVerifiableCredentialArgs, IOVAgent, UnsignedCredential } from '@originvault/ov-types';
+import { CredentialPayload, ICreateVerifiableCredentialArgs, IOVAgent } from '@originvault/ov-types';
 import { v5 as uuidv5 } from 'uuid';
 import ora from 'ora';
 import { parentStore } from './parentAgent.js';
