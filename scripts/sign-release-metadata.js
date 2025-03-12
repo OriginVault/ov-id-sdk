@@ -74,7 +74,7 @@ async function signRelease() {
             throw error;
         }
 
-        const publishedRelease = await publishRelease(signedReleaseMetadata, packageJson.name);
+        const publishedRelease = await publishRelease(signedReleaseMetadata, packageJson.name, packageJson.version);
         spinner.succeed(`✅ Release metadata signatures for ${packageJson.name}@${packageJson.version} published successfully`, {
             publishedRelease,
             publishedWorkingKey

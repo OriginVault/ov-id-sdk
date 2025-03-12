@@ -45,7 +45,7 @@ export async function encryptDataForDID(did: string, message: string): Promise<{
 }
 
 
-export async function convertRecoveryToPrivateKey(mnemonic) {
+export async function convertRecoveryToPrivateKey(mnemonic: string): Promise<string> {
     try {
       const entropy = bip39.mnemonicToEntropy(mnemonic, wordlist)
       const privateKey = Buffer.from(entropy, 'hex');
@@ -66,7 +66,7 @@ export async function convertRecoveryToPrivateKey(mnemonic) {
     }
 }
 
-export async function convertPrivateKeyToRecovery(privateKey) {
+export async function convertPrivateKeyToRecovery(privateKey: string): Promise<string> {
     try {
         // Decode base64 private key to Uint8Array
         const decodedKey = Buffer.from(privateKey, 'base64');

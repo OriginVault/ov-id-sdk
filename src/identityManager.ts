@@ -1,4 +1,4 @@
-import { userAgent, privateKeyStore } from './userAgent.js';
+import { userAgent, privateKeyStore, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE } from './userAgent.js';
 import base58 from 'bs58';
 import { storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
@@ -6,28 +6,19 @@ import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
 import os from 'os';
 import inquirer from 'inquirer';
-import { DIDAssertionCredentialSubject, DIDAssertionCredential } from '@originvault/ov-types';
-import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from './environment.js';
-import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, KEYRING_FILE, ensureKeyring, encryptionKey } from './storePrivateKeys.js';
+import { getEnvironmentMetadata } from './environment.js';
+import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, ensureKeyring, encryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
-
+import { IOVAgent, IIdentifier, DIDAssertionCredential, VerifiableCredential } from '@originvault/ov-types';
 import axios from 'axios';
 import { KeyringPair$Json } from '@polkadot/keyring/types.js';
 
-const PRIMARY_DID_WALLET_FILE = path.resolve(os.homedir(), '.originvault-primary-did-wallet.json');
-
-export const ensurePrimaryDIDWallet = async () => {
-    if (!fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
-        fs.writeFileSync(PRIMARY_DID_WALLET_FILE, JSON.stringify({}, null, 2));
-    }
-}
-
-export async function createDID(props: { method: string, alias: string, isPrimary: boolean, agent: any }): Promise<{ did: string, mnemonic: string, credentials: DIDAssertionCredential[] }> {
+export async function createDID(props: { method: string, alias: string, isPrimary: boolean, agent: IOVAgent }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
     try {
         ensurePrimaryDIDWallet();
-        const primaryDid = await getPrimaryDID() || '';
+        const primaryDid = await userAgent?.getPrimaryDID() || '';
         if (primaryDid.length === 0 && !props.isPrimary) {
             throw new Error("Primary DID not found.");
         }
@@ -114,7 +105,6 @@ export async function createDID(props: { method: string, alias: string, isPrimar
             proofFormat: 'jwt'
         });
 
-
         return { did, mnemonic, credentials: [signedCreation] };
     } catch (error) {
         console.error("❌ Error creating DID:", error);
@@ -122,7 +112,7 @@ export async function createDID(props: { method: string, alias: string, isPrimar
     }
 }
 
-export async function importDID(didString: string, privateKey: string, method: string, agent: any): Promise<any> {
+export async function importDID(didString: string, privateKey: string, method: string, agent: IOVAgent): Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }> {
     try {
         // Convert the private key from hex to Uint8Array
         const privateKeyBytes = Uint8Array.from(Buffer.from(privateKey, 'base64'));
@@ -134,7 +124,20 @@ export async function importDID(didString: string, privateKey: string, method: s
         // Get the public key multibase from the DID document
         const verifiedAuthentication = await getVerifiedAuthentication(didString);
 
-        const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
+        const publicKeyMultibase = verifiedAuthentication?.publicKeyMultibase;
+        if(!publicKeyMultibase) {
+            console.error("❌ Public key multibase not found");
+            return {
+                did: {
+                    did: 'Public key multibase not found',
+                    provider: `did:${method}`,
+                    keys: [],
+                    services: [],
+                },
+                credentials: [],
+            };
+        }
+
         const publicKeyBuffer = multibase.decode(Buffer.from(publicKeyMultibase, 'utf-8'));
         const publicKeySliced = publicKeyBuffer.slice(2);
         const documentPublicKey = Buffer.from(publicKeySliced).toString('base64');
@@ -142,11 +145,19 @@ export async function importDID(didString: string, privateKey: string, method: s
         // Compare derived public key with the public key in the DID document
         if (derivedPublicKey !== documentPublicKey) {
             console.error("❌ Private key does not match the public key in DID document");
-            return false;
+            return {
+                did: {
+                    did: 'Private key does not match the public key in DID document',
+                    provider: `did:${method}`,
+                    keys: [],
+                    services: [],
+                },
+                credentials: [],
+            };
         }
 
 
-        const verificationSteps: DIDAssertionCredentialSubject['verificationSteps'] = [
+        const verificationSteps: DIDAssertionCredential['credentialSubject']['verificationSteps'] = [
             {
                 step: "Get public key multibase from resolved DID",
                 result: 'Passed',
@@ -215,17 +226,31 @@ export async function importDID(didString: string, privateKey: string, method: s
         await storePrivateKey(didString, privateKeySub, verifiedAuthentication.id);
 
         try {
-            const getDid = await getDIDKeys(didString, agent);
+            const getDid = await getDIDKeys(didString);
             if(!getDid) {
                 console.error("❌ Error confirming import:");
-                return false;
+                return {
+                    did: {
+                        did: 'Private key does not match the public key in DID document',
+                        provider: `did:${method}`,
+                        keys: [],
+                        services: [],
+                    },
+                    credentials: [],
+                };
             }
         } catch (error) {
             console.error("❌ Error confirming import:", error);
-            return false;
+            return {
+                did: {
+                    did: 'Private key does not match the public key in DID document',
+                    provider: `did:${method}`,
+                    keys: [],
+                    services: [],
+                },
+                credentials: [],
+            };
         }
-
-
 
         return { did, credentials: [signedImport] };
     } catch (error) {
@@ -234,7 +259,7 @@ export async function importDID(didString: string, privateKey: string, method: s
     }
 } 
 
-export async function getDIDKeys(did: string | any, agent: any): Promise<KeyringPair$Json | null> {
+export async function getDIDKeys(did: string | any): Promise<KeyringPair$Json | null> {
     let didString: any;
     if (typeof did === 'string') {
         didString = did;
@@ -256,7 +281,7 @@ export async function getDIDKeys(did: string | any, agent: any): Promise<Keyring
     }
 }
 
-export async function listDIDs(agent: any, provider?: string, ): Promise<any> {
+export async function listDIDs(agent: IOVAgent, provider?: string, ): Promise<IIdentifier[]> {
     try {
         if(!provider) {
             const findDids = await agent.didManagerFind();
@@ -269,7 +294,7 @@ export async function listDIDs(agent: any, provider?: string, ): Promise<any> {
         return providerDids;
     } catch (error) {
         console.error("❌ Error listing DIDs:", error);
-        return false;
+        return [];
     }
 }
 
@@ -319,7 +344,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             return false;
         }
 
-        const verificationSteps: DIDAssertionCredentialSubject['verificationSteps'] = [
+        const verificationSteps: DIDAssertionCredential['credentialSubject']['verificationSteps'] = [
             {
                 step: "Get public key multibase from resolved DID",
                 result: 'Passed',
@@ -358,7 +383,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 
          // ✅ Ensure the DID is imported into Veramo
         try {
-            await userAgent.didManagerImport({
+            await userAgent?.didManagerImport({
                 did,
                 provider: "did:cheqd",
                 controllerKeyId: did,
@@ -390,7 +415,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 expirationDate: new Date().toISOString()
             };
 
-            const signedImport = await userAgent.createVerifiableCredential({
+            const signedImport = await userAgent?.createVerifiableCredential({
                 credential,
                 proofFormat: 'jwt'
             });
@@ -400,7 +425,8 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             // ✅ Encrypt and store the private key
             const encryptedPrivateKey = encryptPrivateKey(privateKey, password);
 
-            const environmentMetadata = await getProductionEnvironmentMetadata();
+            const packageJsonPath = path.join(__dirname, '../package.json');
+            const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
 
             const environmentCredential: DIDAssertionCredential = {
                 id: credentialId,
@@ -424,7 +450,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 expirationDate: new Date().toISOString()
             };
 
-            const signedEnvironmentVC = await userAgent.createVerifiableCredential({
+            const signedEnvironmentVC = await userAgent?.createVerifiableCredential({
                 credential: environmentCredential,
                 proofFormat: 'jwt'
             });
@@ -478,43 +504,6 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
     }
 }
 
-export async function getPrimaryDID(): Promise<string | null> {
-    ensurePrimaryDIDWallet();
-    try {
-        const kr = await ensureKeyring();
-        const pairs = kr.getPairs();
-        const primaryPair = pairs.find(p => p.meta?.isPrimary);
-        const did = (primaryPair?.meta?.did || '') as string;
-        
-        if(did) return did;
-        
-        try {
-            const storedData = fs.readFileSync(PRIMARY_DID_WALLET_FILE, 'utf8');
-            const { meta } = JSON.parse(storedData);
-            if(!meta) return null;
-            const { did, didCredential } = meta;
-            if(!didCredential) return null;
-            if(did) return did;
-        } catch (error) {
-            console.error("❌ Error accessing keyring. File may not exist",);
-            return null;
-        }
-        
-        const domain = process.env.SDK_DOMAIN;
-        const detectedHostname = os.hostname();
-        console.log("Detected Hostname:", detectedHostname);
-        console.log("🔑 Domain", domain);
-        if (!domain) {
-            console.error("❌ No domain set for SDK validation.");
-            return null;
-        }
-        return await fetchDomainDID(domain);
-    } catch (error) {
-        console.error("❌ Error accessing keyring:", error);
-        return null;
-    }
-}
-
 export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
     ensurePrimaryDIDWallet();
     try {
@@ -522,7 +511,7 @@ export async function verifyPrimaryDID(password: string): Promise<string | boole
         const { encryptedPrivateKey, meta } = JSON.parse(storedData);
         if(!encryptedPrivateKey) return false;
         
-        const did = meta.did;
+        const did: string = meta.did;
         const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
         if (!privateKey) {
             console.error("❌ Failed to decrypt private key");
@@ -531,7 +520,7 @@ export async function verifyPrimaryDID(password: string): Promise<string | boole
 
         // Import the DID using the decrypted private key
         try {
-            await userAgent.didManagerImport({
+            await userAgent?.didManagerImport({
                 did: did,
                 provider: "did:cheqd",
                 controllerKeyId: privateKey, // Associate with private key

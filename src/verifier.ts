@@ -31,7 +31,7 @@ export async function verifySoftwareExecution() {
         }
 
         const metadata = JSON.parse(fs.readFileSync(certPath, 'utf-8'));
-        const isValid = await userAgent.verifyVerifiableCredential(metadata);
+        const isValid = await userAgent?.verifyVerifiableCredential(metadata);
 
         logVerificationResult(commitHash, isValid);
 

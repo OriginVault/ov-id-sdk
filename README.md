@@ -90,27 +90,24 @@ console.log("VC Verification:", isValid);
 
 ### **5️⃣ Sign Releases**
 ```typescript
-import { parentStore, packageStore } from "@originvault/ov-id-sdk";
+import { parentStore } from "@originvault/ov-id-sdk";
 
-// ✅ Sign the current release
+// ✅ Self-sign a release
 const { signRelease } = await parentStore.initialize();
 await signRelease();
 
-console.log("Latest commit signed successfully.");
+console.log("Latest release signed successfully. Ready to publish.");
 ```
 ---
 
 ### **7️⃣ Get Development Environment Metadata**
 ```typescript
-import { getDevelopmentEnvironmentMetadata, getProductionEnvironmentMetadata } from "@originvault/ov-id-sdk";
+import { getEnvironmentMetadata } from "@originvault/ov-id-sdk";
 
 // ✅ Get development environment metadata
-const environment = getDevelopmentEnvironmentMetadata();
+const packageJsonPath = path.join(__dirname, '../package.json');
+const environment = getEnvironmentMetadata(packageJsonPath);
 console.log("Development Environment:", environment);
-
-// ✅ Get production environment metadata
-const productionEnvironment = getProductionEnvironmentMetadata();
-console.log("Production Environment:", productionEnvironment);
 ```
 
 ## 🛠 Configuration
