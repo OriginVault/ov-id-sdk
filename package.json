@@ -1,7 +1,7 @@
 {
   "name": "@originvault/ov-id-sdk",
   "did": "did:cheqd:mainnet:280dd37c-aa96-5e71-8548-5125505a968e",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
   "main": "./dist/index.js",
@@ -68,7 +68,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@originvault/ov-types": "^0.0.5-alpha.18",
+    "@originvault/ov-types": "^0.0.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/jest": "^27.5.2",
