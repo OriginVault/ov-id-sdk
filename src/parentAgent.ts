@@ -7,15 +7,19 @@ import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { Resolver } from 'did-resolver';
+import { DIDAssertionCredential, VerifiableCredential, IResolver, IKeyManager, ICredentialPlugin, IDIDManager, TAgent, IIdentifier } from '@originvault/ov-types';
 import { getParentDIDFromPackageJson, getParentBundlePrivateKey, getParentBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
 import dotenv from 'dotenv';
-import { DIDAssertionCredential } from '@originvault/ov-types';
 import { v5 as uuidv5 } from 'uuid';
 import { convertRecoveryToPrivateKey } from './encryption.js';
 import { importDID, listDIDs, getDIDKeys, createDID } from './identityManager.js';
 import { createResource } from './resourceManager.js';
-import { getProductionEnvironmentMetadata } from './environment.js';
+import { getEnvironmentMetadata } from './environment.js';
+import path from 'path';
+import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+
+
 
 dotenv.config();
 
@@ -30,18 +34,8 @@ declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
-interface VerifiableCredential {
-  credentialSubject: any;
-  issuer: { id: string };
-  type: string[];
-  '@context': string[];
-  issuanceDate: string;
-  proof: any;
-}
-
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
-let parentAgent: any;
-let parentAuth: string | object | null = null;
+let parentAgent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
 let publishWorkingKey: (() => Promise<string | undefined>) | null = null;
@@ -61,7 +55,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
         cosmosPayerSeed,
     })
 
-    parentAgent = createAgent({
+    parentAgent = createAgent<TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver>>({
         plugins: [
             new KeyManager({
                 store: keyStore,
@@ -98,7 +92,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     if (didMnemonic) {
         const parentPrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
         const { credentials } = await importDID(parentDIDString, parentPrivateKey, 'cheqd', parentAgent);
-        
+
         signedVCs.concat(credentials);
     }
 
@@ -118,7 +112,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     await parentAgent.didManagerImport({
         did: didKey,
         keys: [{
-            kid: importedKey.id,
+            kid: importedKey.kid,
             type: 'Ed25519',
             kms: 'local',
             privateKeyHex,
@@ -127,7 +121,8 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
         alias: didKey
     });
 
-    const environmentMetadata = await getProductionEnvironmentMetadata();
+    const packageJsonPath = path.join(process.cwd(), '../../../package.json');
+    const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
     const environmentCredentialId = uuidv5(bundle.hash + new Date().toISOString(), uuidv5.URL);
 
     const environmentCredential: DIDAssertionCredential = {
@@ -189,7 +184,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
                 data: signedVC,
                 did: parentDIDString,
                 name: `${parentDIDString}-keys`,
-                directory: 'package-keys',
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: parentAgent,
                 keyStore: privateKeyStore,
@@ -210,12 +204,18 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     currentDIDKey = didKey;
 
     publishRelease = async (releaseCredential: any, name: string, version: string) => {
+        const resolvedPackageDid = await parentAgent?.resolveDid({ didUrl: parentDIDString });
+        const alreadyPublished = resolvedPackageDid?.didDocumentMetadata?.linkedResourceMetadata?.some(resource => resource.resourceVersion);
+        if(alreadyPublished) {
+            console.warn("Package already published. Skipping.");
+            return;
+        }
+
         const result = await createResource({
             data: releaseCredential,
             did: parentDIDString,
             name,
             version,
-            directory: 'versions',  
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: parentAgent,
             keyStore: privateKeyStore,
@@ -232,17 +232,30 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     return { parentAgent, parentDIDString, currentDIDKey, signedVCs, publishWorkingKey, publishRelease };
 }
 
-const parentStore = {
+interface AgentStore {
+    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ parentAgent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver>, parentDIDString: string, currentDIDKey: string, signedVCs: VerifiableCredential[], publishWorkingKey: (() => Promise<string | undefined>) | null, publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
+    agent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> | null,
+    keyStore: MemoryKeyStore,
+    cheqdMainnetProvider: CheqdDIDProvider | null,
+    listDids: (provider?: string) => Promise<IIdentifier[]>,
+    getDID: (didString: string) => Promise<KeyringPair$Json | null>,
+    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
+    importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
+    getPrimaryDID: () => Promise<string>,
+    [key: string]: any,
+}
+
+const parentStore: AgentStore = {
     initialize: initializeParentAgent,
     agent: parentAgent,
-    privateKeyStore,
+    keyStore,
     cheqdMainnetProvider,
     didKey: currentDIDKey,
     credentials: signedVCs,
-    listDids: (provider?: string) => listDIDs(parentAgent, provider),
-    getDID: (didString: string) => getDIDKeys(didString, parentAgent),
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => createDID({ ...props, agent: parentAgent }),
-    importDID: (didString: string, privateKey: string, method: string) => importDID(didString, privateKey, method, parentAgent),
+    listDids: async (provider?: string) => parentAgent ? listDIDs(parentAgent, provider) : [] as IIdentifier[],
+    getDID: async (didString: string) => getDIDKeys(didString),
+    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => parentAgent ? createDID({ ...props, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
+    importDID: (didString: string, privateKey: string, method: string) => parentAgent ? importDID(didString, privateKey, method, parentAgent) : Promise.reject(new Error("Parent agent not initialized")),
     getPrimaryDID: async () => await getParentDIDFromPackageJson(),
     getBundleHash: async () => await getParentBundleHash(),
     publishWorkingKey

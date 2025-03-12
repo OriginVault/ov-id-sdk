@@ -7,9 +7,11 @@ import * as ed25519 from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
 import { decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
 import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { IIdentifier, VerifiableCredential } from '@originvault/ov-types';
 
 dotenv.config();
 
@@ -69,41 +71,35 @@ export async function ensureKeyring(): Promise<Keyring> {
 }
 
 // Exported functions
-export const getVerifiedAuthentication = async (did: { id: string } | string) => {
-    let resolvedDid;
-    if (typeof did === 'string') {
-        resolvedDid = await userAgent.resolveDid({ didUrl: did });
-    } else if (typeof did === 'object') {
-        resolvedDid = did.id;
-    }
-    
+export const getVerifiedAuthentication = async (did: string): Promise<VerificationMethod | null> => {
+    let resolvedDid: DIDResolutionResult | undefined = await userAgent?.resolveDid({ didUrl: did });
     if (!resolvedDid) {
         console.error("❌ DID could not be resolved", did);
-        return false;
+        return null;
     }
     const didDoc = resolvedDid.didDocument;
     const authentication = didDoc?.authentication?.[0];
     if (!authentication) {
         console.error("❌ No authentication found for DID", did);
-        return false;
+        return null;
     }
     const verificationMethods = didDoc.verificationMethod;
     if (!verificationMethods) {
         console.error("❌ No verification method found for DID", did);
-        return false;
+        return null;
     }
     const verifiedAuthentication = verificationMethods.find(method => method.id === authentication);
     if (!verifiedAuthentication) {
         console.error("❌ Could not find verification method for standard did authentication", did);
-        return false;
+        return null;
     }
     return verifiedAuthentication;
 }
 
-export const getPublicKeyMultibase = async (did: string) => {
+export const getPublicKeyMultibase = async (did: string): Promise<string | undefined> => {
     const verifiedAuthentication = await getVerifiedAuthentication(did);
     if (!verifiedAuthentication) {
-        return false;
+        return undefined;
     }
     const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
     return publicKeyMultibase;
@@ -216,7 +212,7 @@ export function base64ToHex(base64) {
     return hexString;
 }
 
-export function setPrimaryVc(signedVC: any) {
+export function setPrimaryVc(signedVC: VerifiableCredential) {
     // Log the signed VC
     console.log("Setting primary VC:", signedVC);
 
@@ -230,7 +226,7 @@ export function setPrimaryVc(signedVC: any) {
     }
 }
 
-export async function getPrimaryVC(): Promise<any | null> {
+export async function getPrimaryVC(): Promise<VerifiableCredential | null> {
     try {
         const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
         const { meta } = JSON.parse(storedData);

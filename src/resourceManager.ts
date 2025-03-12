@@ -1,8 +1,12 @@
 import { v5 as uuidv5 } from 'uuid';
 import { getVerifiedAuthentication, } from './storePrivateKeys.js';
+import { CheqdNetwork } from '@cheqd/sdk';
+import type { MemoryPrivateKeyStore } from '@veramo/key-manager';
+import { ICheqdCreateLinkedResourceResponse, ICheqdCreateLinkedResourceArgs, ResourcePayload, ISignInputs, IDIDManager, IKeyManager, ICredentialIssuer, ICredentialVerifier, IResolver, TAgent, IDataStore, ICheqd } from '@originvault/ov-types';
 import fs from 'fs';
 import path from 'path';
 import { getDIDKeys } from './identityManager.js';
+import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 
 let jsonFilePath;
 
@@ -10,9 +14,9 @@ const cleanUp = () => {
     if (jsonFilePath) fs.unlinkSync(jsonFilePath);
 }
 
-export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, provider: any, agent: any, keyStore: any, resourceId?: string, directory?: string, resourceType?: string, version?: string, }) {    
+export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, version: string, provider: CheqdDIDProvider, agent: TAgent<IKeyManager & IDIDManager & ICredentialIssuer & ICredentialVerifier & IResolver & IDataStore & ICheqd>, keyStore: MemoryPrivateKeyStore, resourceId?: string, resourceType?: string, }) {    
     try {
-        const resolvedDid = await getDIDKeys(did, agent);
+        const resolvedDid = await getDIDKeys(did);
 
         if (!resolvedDid) {
             console.log("Could not resolve DID", did);
@@ -37,22 +41,13 @@ export async function createResource({ data, did, name, version, provider, agent
             throw new Error(`File not found: ${jsonFilePath}`);
         }
 
-        const signInputs = [{
-            verificationMethodId: verificationMethod.id,
+        const signInputs: ISignInputs[] = [{
+            verificationMethodId: verificationMethod?.id || '',
             keyType: 'Ed25519',
             privateKeyHex: privateKey.privateKeyHex,
         }];
 
-        const payload: {
-            did: string,
-            key: string,
-            collectionId: string,
-            id: string,
-            name: string,
-            data: Buffer,
-            resourceType?: string,
-            version?: string,
-        } = {
+        const payload: ResourcePayload = {
             did: id,
             key: key,
             collectionId,
@@ -66,27 +61,26 @@ export async function createResource({ data, did, name, version, provider, agent
             payload.version = version;
         }
 
-        const params = {
-            options: {
-                kms: 'local',
-                provider,
-                network: "mainnet",
-                payload,
-                signInputs,
-                file: jsonFilePath, 
-                fee: {
-                    amount: [{ denom: 'ncheq', amount: '2500000000' }],
-                    gas: '2000000',
-                }
+        const params: ICheqdCreateLinkedResourceArgs = {
+            kms: 'local',
+            network: CheqdNetwork.Mainnet,
+            payload,
+            signInputs,
+            file: jsonFilePath, 
+            fee: {
+                amount: [{ denom: 'ncheq', amount: '2500000000' }],
+                gas: '2000000',
             }
-        };
+        }
+        
         try {
-            const result = await provider.createResource(params, { agent, kms: 'local' });
+            const result: ICheqdCreateLinkedResourceResponse = await provider.createResource({ options: params }, { agent });
             cleanUp();
             if (result) {
                 // Return the link to the cheqd resolver
                 return `https://resolver.cheqd.net/1.0/identifiers/${did}/resources/${resourceUUID}`;
             }
+            
             return undefined;
         } catch (error) {
             cleanUp();
@@ -100,7 +94,7 @@ export async function createResource({ data, did, name, version, provider, agent
     }
 }
 
-export function generateResourceFile(dirPath, filePath, data) {
+export function generateResourceFile(dirPath: string, filePath: string, data: any) {
     const jsonFilePath = path.resolve(dirPath, filePath);
     // Ensure the directory exists before writing the file
     if (!fs.existsSync(dirPath)) {
@@ -116,8 +110,8 @@ export function generateResourceFile(dirPath, filePath, data) {
     return jsonFilePath;
 }
 
-export async function getResources({ did, agent }) {
-    const resolvedDid = await agent.resolveDid({ didUrl: typeof did === 'string' ? did : did.did });
+export async function getResources({ did, agent }: { did: string, agent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> }) {
+    const resolvedDid = await agent.resolveDid({ didUrl: did });
     console.log('DID', resolvedDid);
 }
 
