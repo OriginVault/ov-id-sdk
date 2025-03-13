@@ -21,24 +21,23 @@ const cleanUp = (collectionId?: string) => {
 
 export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, version: string, provider: CheqdDIDProvider, agent: TAgent<IKeyManager & IDIDManager & ICredentialIssuer & ICredentialVerifier & IResolver & IDataStore & ICheqd>, keyStore: MemoryPrivateKeyStore, resourceId?: string, resourceType?: string, }) {    
     try {
-        const resolvedDid = await getDIDKeys(did);
+        const resolvedKeys = await getDIDKeys(did);
 
-        if (!resolvedDid) {
+        if (!resolvedKeys) {
             console.log("Could not resolve DID", did);
             return undefined;
         }
         
-        const { meta } = resolvedDid;
-        const { keyName: id, kid: key } = meta as { keyName: string, kid: string };
+        const { keyName: id, kid: key } = resolvedKeys;
         
-        const verificationMethod = await getVerifiedAuthentication(id);
+        const verificationMethod = await getVerifiedAuthentication(id as string);
 
         // Extract the last part of the DID string to use as the collectionId
-        const collectionId = id.split(':').pop() || '';
+        const collectionId = (id as string).split(':').pop() || '';
         dirId = collectionId;
         const fileRelativePath = uuidv5(name, uuidv5.URL); // Use sanitized name
         const resourceUUID = resourceId || uuidv5(fileRelativePath + new Date().toISOString(), uuidv5.URL);
-        const privateKey = await keyStore.getKey({ alias: key });
+        const privateKey = await keyStore.getKey({ alias: key as string });
 
         jsonFilePath = await generateResourceFile(collectionId, fileRelativePath, data);
         // Check if the file exists before reading
