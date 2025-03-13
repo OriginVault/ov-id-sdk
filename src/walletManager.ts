@@ -20,7 +20,7 @@ async function getCosmosPayerSeed(): Promise<string | null> {
         console.warn("Cosmos payer seed not found. Cannot retrieve Cosmos payer seed.");
         return null;
     }
-    return seed.address;
+    return seed;
 }
 
 async function storeCosmosPayerSeed(seed: string): Promise<void> {

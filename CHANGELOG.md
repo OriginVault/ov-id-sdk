@@ -2,6 +2,7 @@
 
 ## v0.0.10
 - [fix]: Fixes `getDID` to return `undefined` if the DID is not found in the keyring.
+- [fix]: Fixes keyring encoding
 - [fix]: Fixes `convertPrivateKeyToRecovery` to handle both 64 and 32 byte private keys.
 - [fix]: Adds `retrieveKeys` to return keyring metadata
 
