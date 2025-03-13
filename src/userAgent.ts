@@ -11,7 +11,7 @@ import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
 import dotenv from 'dotenv';
 import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -151,7 +151,7 @@ interface AgentStore {
     keyStore: MemoryKeyStore,
     cheqdMainnetProvider: CheqdDIDProvider | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
-    getDID: (didString: string) => Promise<KeyringPair$Json | null>,
+    getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
     createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
     importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
     getPrimaryDID: () => Promise<string>,

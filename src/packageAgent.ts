@@ -18,7 +18,7 @@ import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { co2 } from "@tgwf/co2";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -260,7 +260,7 @@ interface AgentStore {
     keyStore: MemoryKeyStore,
     cheqdMainnetProvider: CheqdDIDProvider | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
-    getDID: (didString: string) => Promise<KeyringPair$Json | null>,
+    getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
     createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
     importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
     getPrimaryDID: () => Promise<string>,

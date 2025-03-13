@@ -1,8 +1,14 @@
 ## Change Log
 
+## v0.0.10
+- [fix]: Fixes `getDID` to return `undefined` if the DID is not found in the keyring.
+- [fix]: Fixes `convertPrivateKeyToRecovery` to handle both 64 and 32 byte private keys.
+- [fix]: Adds `retrieveKeys` to return keyring metadata
+
 ## v0.0.9
 - [feat]: Adds `createDID` and `importDID` functions to the package.
 - [fix]: Fixes `parentAgent` to be exported from the package.
+
 ## v0.0.8
 - [fix]: Fixes imports in `parentAgent.ts`.
 

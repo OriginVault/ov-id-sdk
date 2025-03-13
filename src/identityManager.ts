@@ -1,4 +1,4 @@
-import { userAgent, privateKeyStore, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE } from './userAgent.js';
+import { userAgent, privateKeyStore, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE, userStore } from './userAgent.js';
 import base58 from 'bs58';
 import { storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
@@ -8,13 +8,13 @@ import os from 'os';
 import inquirer from 'inquirer';
 import { parentAgent } from './parentAgent.js';
 import { getEnvironmentMetadata } from './environment.js';
-import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
+import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrieveKeys, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
 import { IOVAgent, IIdentifier, DIDAssertionCredential, VerifiableCredential } from '@originvault/ov-types';
 import axios from 'axios';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 
 export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
     const createAgent = props.agent || parentAgent;
@@ -23,12 +23,12 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
     }
     try {
         ensurePrimaryDIDWallet();
-        const primaryDid = await userAgent?.getPrimaryDID() || '';
+        const primaryDid = await userStore?.getPrimaryDID() || '';
         if (primaryDid.length === 0 && !props.isPrimary) {
             throw new Error("Primary DID not found.");
         }
 
-        const primaryAuthentication = await getVerifiedAuthentication(props.isPrimary ? primaryDid : props.alias);
+        const primaryAuthentication = await getVerifiedAuthentication(props.isPrimary ? primaryDid : props.alias || '');
         console.log("🔑 primaryAuthentication", primaryAuthentication);
         const method = props.method || 'cheqd:testnet';
        
@@ -268,7 +268,7 @@ export async function importDID(didString: string, privateKey: string, method: s
     }
 } 
 
-export async function getDIDKeys(did: string | any): Promise<KeyringPair$Json | null> {
+export async function getDIDKeys(did: string | any): Promise<KeyringPair$Meta | undefined> {
     let didString: any;
     if (typeof did === 'string') {
         didString = did;
@@ -277,16 +277,16 @@ export async function getDIDKeys(did: string | any): Promise<KeyringPair$Json | 
     }
 
     try {
-        const privateKey = await retrievePrivateKey(didString);
+        const keys = await retrieveKeys(didString);
 
-        if (!privateKey) {
+        if (!keys) {
             throw new Error("DID not found in keyring");
         }
 
-        return privateKey;
+        return keys;
     } catch (error) {
         console.error("❌ Error getting DID keys:", error);
-        return null;
+        return undefined;
     }
 }
 

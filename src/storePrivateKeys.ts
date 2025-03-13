@@ -8,9 +8,9 @@ import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
-import { decryptPrivateKey } from './encryption.js';
+import { convertPrivateKeyToRecovery, decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { VerifiableCredential } from '@originvault/ov-types';
 
 dotenv.config();
@@ -68,19 +68,16 @@ export async function getEncryptionKey(): Promise<string> {
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
     await initializeEncryptionKey();
-    
+
     if (!keyring) {
         await cryptoWaitReady();
         keyring = new Keyring({ type: 'ed25519' });
 
         if (fs.existsSync(KEYRING_FILE)) {
-            const storedData = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
-            if (storedData && storedData.meta) {
-                const keys = storedData.meta.keys || [];
-                keys.forEach((key: any) => {
-                    keyring?.addPair(key);
-                });
-            }
+            const keys = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
+            keys?.forEach((key: any) => {
+                keyring?.addFromJson(key);
+            });
         }
     }
     return keyring;
@@ -167,17 +164,32 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array, k
     }
 }
 
-export async function retrievePrivateKey(keyName: string): Promise<KeyringPair$Json | undefined> {
+export async function retrievePrivateKey(keyName: string): Promise<string | undefined> {
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs().map(pair => pair.toJson());
-
         const pair = pairs.find(p => p.meta.keyName === keyName);
-        return pair;
+        return Buffer.from(kr.decodeAddress(pair?.address)).toString('base64');
     } catch (error) {
         console.error("❌ Error retrieving private key:", error);
         return undefined;
     }
+}
+
+export async function retrieveKeys(keyName: string): Promise<KeyringPair$Meta | undefined> {
+    const kr = await ensureKeyring();
+    const pairs = kr.getPairs().map(pair => pair.toJson());
+    const pair = pairs.find(p => p.meta.keyName === keyName);
+    return pair?.meta;
+}
+
+export async function retrieveMnemonicForDID(did: string): Promise<string | undefined> {
+    const privateKey = await retrievePrivateKey(did);
+    if (!privateKey) {
+        return undefined;
+    }
+    const mnemonic = await convertPrivateKeyToRecovery(privateKey);
+    return mnemonic;
 }
 
 export async function listAllKeys(): Promise<{ did: string; privateKey: string; isPrimary: boolean }[]> {
