@@ -76,12 +76,12 @@ export async function convertPrivateKeyToRecovery(privateKey: string): Promise<s
         }
 
         // Validate private key length
-        if (decodedKey.length !== 64) {
-            throw new Error(`Invalid private key length: Expected 64 bytes, got ${decodedKey.length}`);
+        if (decodedKey.length !== 64 && decodedKey.length !== 32) {
+            throw new Error(`Invalid private key length: Expected 64 or 32 bytes, got ${decodedKey.length}`);
         }
 
         // Extract the private key (first 32 bytes)
-        const privateKeySlice = decodedKey.subarray(0, 32);
+        const privateKeySlice = decodedKey.length === 64 ? decodedKey.subarray(0, 32) : decodedKey;
 
         // Convert private key to mnemonic
         const mnemonic = bip39.entropyToMnemonic(privateKeySlice, wordlist);

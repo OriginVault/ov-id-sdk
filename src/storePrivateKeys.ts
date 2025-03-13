@@ -8,10 +8,10 @@ import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
-import { decryptPrivateKey } from './encryption.js';
+import { convertPrivateKeyToRecovery, decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
-import { IIdentifier, VerifiableCredential } from '@originvault/ov-types';
+import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { VerifiableCredential } from '@originvault/ov-types';
 
 dotenv.config();
 
@@ -23,48 +23,61 @@ let keyring: Keyring | undefined;
 export const KEYRING_FILE = path.join(os.homedir(), '.originvault-cheqd-did-keyring.json');
 
 // Define the path for the encryption key file
-const encryptionKeyFilePath = path.join(os.homedir(), '.originvault-encryption-key');
 
-export let encryptionKey: string | undefined;
+const keyStore = {
+    encryptionKeyFilePath: path.join(os.homedir(), '.originvault-encryption-key'),
+    privateEncryptionKey: process.env.ENCRYPTION_KEY || 'admin-key',
+}
 
 async function initializeEncryptionKey() {
-    if (!fs.existsSync(encryptionKeyFilePath)) {
-        // Prompt for the encryption key if the file does not exist
-        const { encryptionKey: inputKey } = await inquirer.prompt([
-            {
-                type: 'password',
-                name: 'encryptionKey',
-                message: 'Enter an encryption key to encrypt the password:',
-                mask: '*',
-            },
-        ]);
-        // Store the encryption key in the file
-        fs.writeFileSync(encryptionKeyFilePath, JSON.stringify({ key: inputKey }), 'utf8');
-        encryptionKey = inputKey;
-    } else {
-        const { key } = JSON.parse(fs.readFileSync(encryptionKeyFilePath, 'utf8'));
-        encryptionKey = key;
+    try {
+        const keyPath = path.join(os.homedir(), '.originvault-encryption-key');
+        if (!fs.existsSync(keyPath)) {
+            if(process.env.ENCRYPTION_KEY) {
+                keyStore.privateEncryptionKey = process.env.ENCRYPTION_KEY;
+                keyStore.encryptionKeyFilePath = keyPath;
+                return;
+            }
+            const { encryptionKey: inputKey } = await inquirer.prompt([
+                {
+                    type: 'password',
+                    name: 'encryptionKey',
+                    message: 'Enter an encryption key to encrypt the password:',
+                    mask: '*',
+                },
+            ]);
+            // Store the encryption key in the file
+            fs.writeFileSync(keyPath, JSON.stringify({ key: inputKey }), 'utf8');
+            keyStore.privateEncryptionKey = inputKey;
+            keyStore.encryptionKeyFilePath = keyPath;
+        } else {
+            const { key } = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+            keyStore.privateEncryptionKey = key;
+        }
+    } catch (error) {
+        console.error("❌ Error initializing encryption key:", error);
+        throw error;
     }
+}
+
+export async function getEncryptionKey(): Promise<string> {
+    await initializeEncryptionKey();
+    return keyStore.privateEncryptionKey;
 }
 
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
-    if (!encryptionKey) {
-        await initializeEncryptionKey();
-    }
-    
+    await initializeEncryptionKey();
+
     if (!keyring) {
         await cryptoWaitReady();
         keyring = new Keyring({ type: 'ed25519' });
 
         if (fs.existsSync(KEYRING_FILE)) {
-            const storedData = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
-            if (storedData && storedData.meta) {
-                const keys = storedData.meta.keys || [];
-                keys.forEach((key: any) => {
-                    keyring?.addPair(key);
-                });
-            }
+            const keys = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
+            keys?.forEach((key: any) => {
+                keyring?.addFromJson(key);
+            });
         }
     }
     return keyring;
@@ -73,11 +86,13 @@ export async function ensureKeyring(): Promise<Keyring> {
 // Exported functions
 export const getVerifiedAuthentication = async (did: string): Promise<VerificationMethod | null> => {
     let resolvedDid: DIDResolutionResult | undefined = await userAgent?.resolveDid({ didUrl: did });
-    if (!resolvedDid) {
+    if (!resolvedDid || resolvedDid.didResolutionMetadata?.error === "invalidDid") {
         console.error("❌ DID could not be resolved", did);
         return null;
     }
+    
     const didDoc = resolvedDid.didDocument;
+
     const authentication = didDoc?.authentication?.[0];
     if (!authentication) {
         console.error("❌ No authentication found for DID", did);
@@ -107,6 +122,7 @@ export const getPublicKeyMultibase = async (did: string): Promise<string | undef
 
 
 export async function getPrivateKeyForPrimaryDID(password: string) {
+    await ensureKeyring();
     const storedData = fs.readFileSync(KEYRING_FILE, 'utf8');
     const { encryptedPrivateKey } = JSON.parse(storedData);
     if(!encryptedPrivateKey) return false;
@@ -148,17 +164,32 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array, k
     }
 }
 
-export async function retrievePrivateKey(keyName: string): Promise<KeyringPair$Json | undefined> {
+export async function retrievePrivateKey(keyName: string): Promise<string | undefined> {
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs().map(pair => pair.toJson());
-
         const pair = pairs.find(p => p.meta.keyName === keyName);
-        return pair;
+        return Buffer.from(kr.decodeAddress(pair?.address)).toString('base64');
     } catch (error) {
         console.error("❌ Error retrieving private key:", error);
         return undefined;
     }
+}
+
+export async function retrieveKeys(keyName: string): Promise<KeyringPair$Meta | undefined> {
+    const kr = await ensureKeyring();
+    const pairs = kr.getPairs().map(pair => pair.toJson());
+    const pair = pairs.find(p => p.meta.keyName === keyName);
+    return pair?.meta;
+}
+
+export async function retrieveMnemonicForDID(did: string): Promise<string | undefined> {
+    const privateKey = await retrievePrivateKey(did);
+    if (!privateKey) {
+        return undefined;
+    }
+    const mnemonic = await convertPrivateKeyToRecovery(privateKey);
+    return mnemonic;
 }
 
 export async function listAllKeys(): Promise<{ did: string; privateKey: string; isPrimary: boolean }[]> {

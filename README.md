@@ -90,11 +90,11 @@ console.log("VC Verification:", isValid);
 
 ### **5️⃣ Sign Releases**
 ```typescript
-import { parentStore } from "@originvault/ov-id-sdk";
+import { parentStore, signRelease } from "@originvault/ov-id-sdk";
 
 // ✅ Self-sign a release
-const { signRelease } = await parentStore.initialize();
-await signRelease();
+const { signRelease: signParentRelease } = await parentStore.initialize();
+await signRelease(parentStore) || await signParentRelease();
 
 console.log("Latest release signed successfully. Ready to publish.");
 ```

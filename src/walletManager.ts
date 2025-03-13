@@ -2,14 +2,14 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { getPrimaryDID } from './identityManager.js';
+import { userAgent } from './userAgent.js';
 import { storePrivateKey, retrievePrivateKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery } from './encryption.js';
 // Define constants for file paths
 
 // Function to prompt for Cosmos payer seed if not in environment
 async function getCosmosPayerSeed(): Promise<string | null> {
-    const primaryDid = await getPrimaryDID();
+    const primaryDid = await userAgent?.getPrimaryDID();
     if (!primaryDid) {
         console.warn("Primary DID not found. Cannot retrieve Cosmos payer seed.");
         return null;
@@ -20,11 +20,11 @@ async function getCosmosPayerSeed(): Promise<string | null> {
         console.warn("Cosmos payer seed not found. Cannot retrieve Cosmos payer seed.");
         return null;
     }
-    return seed.address;
+    return seed;
 }
 
 async function storeCosmosPayerSeed(seed: string): Promise<void> {
-    const primaryDid = await getPrimaryDID();
+    const primaryDid = await userAgent?.getPrimaryDID();
     if (!primaryDid) {
         console.warn("Primary DID not found. Cannot store Cosmos payer seed.");
         return;

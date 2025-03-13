@@ -3,7 +3,7 @@ import { DIDManager, MemoryDIDStore } from '@veramo/did-manager';
 import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
 import { CredentialPlugin } from '@veramo/credential-w3c';
 import { KeyManagementSystem } from '@veramo/kms-local';
-import { VerifiableCredential, IResolver, IKeyManager, ICredentialPlugin, IDIDManager, TAgent, IIdentifier } from '@originvault/ov-types';
+import { VerifiableCredential, IOVAgent, IIdentifier } from '@originvault/ov-types';
 import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver';
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
@@ -11,7 +11,7 @@ import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
 import dotenv from 'dotenv';
 import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
-import { KeyringPair$Json } from '@polkadot/keyring/types.js';
+import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -84,7 +84,7 @@ export async function getPrimaryDID(): Promise<string | null> {
 }
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
-export let userAgent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> | null = null;
+export let userAgent: IOVAgent | null = null;
 
 const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
@@ -98,7 +98,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
         cosmosPayerSeed,
     })
 
-    userAgent = createAgent<TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver>>({
+    userAgent = createAgent<IOVAgent>({
         plugins: [
             new KeyManager({
                 store: keyStore,
@@ -142,22 +142,19 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
 
     }
 
-    return { userAgent, primaryDID, credentials: signedVCs };
+    return { agent: userAgent, did: primaryDID || '', key: primaryDID || '', credentials: signedVCs };
 }
 
-initializeAgent();
-
 interface AgentStore {
-    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ userAgent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> }>,
-    agent: TAgent<IKeyManager & IDIDManager & ICredentialPlugin & IResolver> | null,
-    privateKeyStore: MemoryPrivateKeyStore,
+    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey?: (() => Promise<string | undefined>) | null, publishRelease?: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
+    agent: IOVAgent | null,
+    keyStore: MemoryKeyStore,
     cheqdMainnetProvider: CheqdDIDProvider | null,
-    didKey?: string | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
-    getDID: (didString: string) => Promise<KeyringPair$Json | null>,
+    getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
     createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
     importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
-    getPrimaryDID: () => Promise<string | null>,
+    getPrimaryDID: () => Promise<string>,
     [key: string]: any,
 }
 
@@ -171,7 +168,7 @@ const userStore: AgentStore = {
     getDID: (didString: string) => userAgent ? getDIDKeys(didString) : Promise.reject(new Error("User agent not initialized")),
     createDID: (props: { method: string, alias: string, isPrimary: boolean }) => userAgent ? createDID({ ...props, agent: userAgent }) : Promise.reject(new Error("User agent not initialized")),
     importDID: (didString: string, privateKey: string, method: string) => userAgent ? importDID(didString, privateKey, method, userAgent) : Promise.reject(new Error("User agent not initialized")),
-    getPrimaryDID: async () => await getPrimaryDID(),
+    getPrimaryDID: async () => await getPrimaryDID() || Promise.reject(new Error("User agent not initialized")),
 }
 
 export { userStore };
