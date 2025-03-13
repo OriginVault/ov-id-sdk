@@ -89,11 +89,13 @@ export async function ensureKeyring(): Promise<Keyring> {
 // Exported functions
 export const getVerifiedAuthentication = async (did: string): Promise<VerificationMethod | null> => {
     let resolvedDid: DIDResolutionResult | undefined = await userAgent?.resolveDid({ didUrl: did });
-    if (!resolvedDid) {
+    if (!resolvedDid || resolvedDid.didResolutionMetadata?.error === "invalidDid") {
         console.error("❌ DID could not be resolved", did);
         return null;
     }
+    
     const didDoc = resolvedDid.didDocument;
+
     const authentication = didDoc?.authentication?.[0];
     if (!authentication) {
         console.error("❌ No authentication found for DID", did);

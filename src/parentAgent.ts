@@ -33,9 +33,9 @@ declare enum CheqdNetwork {
     Testnet = "testnet"
 }
 
-const packageJsonPath = path.join(process.cwd(), '../../../package.json');
+const packageJsonPath = path.join(process.cwd(), './package.json');
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
-let parentAgent: IOVAgent | null = null;
+export let parentAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
 let publishWorkingKey: (() => Promise<string | undefined>) | null = null;
@@ -218,7 +218,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
         }
 
         const resolvedPackageDid = await parentAgent?.resolveDid({ didUrl: parentDIDString });
-        const alreadyPublished = resolvedPackageDid?.didDocumentMetadata?.linkedResourceMetadata?.some(resource => resource.resourceVersion);
+        const alreadyPublished = resolvedPackageDid?.didDocumentMetadata?.linkedResourceMetadata?.some(resource => resource.resourceVersion === version);
         if(alreadyPublished) {
             console.warn("Package already published. Skipping.");
             return;

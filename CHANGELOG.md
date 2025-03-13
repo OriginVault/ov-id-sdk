@@ -1,5 +1,11 @@
 ## Change Log
 
+## v0.0.9
+- [feat]: Adds `createDID` and `importDID` functions to the package.
+- [fix]: Fixes `parentAgent` to be exported from the package.
+## v0.0.8
+- [fix]: Fixes imports in `parentAgent.ts`.
+
 ## v0.0.7
 - [fix]: Fixes imports in `releaseManager.ts`.
 

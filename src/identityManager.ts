@@ -6,6 +6,7 @@ import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
 import os from 'os';
 import inquirer from 'inquirer';
+import { parentAgent } from './parentAgent.js';
 import { getEnvironmentMetadata } from './environment.js';
 import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrievePrivateKey, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
@@ -15,7 +16,11 @@ import { IOVAgent, IIdentifier, DIDAssertionCredential, VerifiableCredential } f
 import axios from 'axios';
 import { KeyringPair$Json } from '@polkadot/keyring/types.js';
 
-export async function createDID(props: { method: string, alias: string, isPrimary: boolean, agent: IOVAgent }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
+export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
+    const createAgent = props.agent || parentAgent;
+    if(!createAgent) {
+        throw new Error("Agent not found");
+    }
     try {
         ensurePrimaryDIDWallet();
         const primaryDid = await userAgent?.getPrimaryDID() || '';
@@ -30,7 +35,7 @@ export async function createDID(props: { method: string, alias: string, isPrimar
         const uuid = uuidv5(primaryDid + new Date().toISOString(), uuidv5.URL);
         const didString = props.alias || `did:${method}:${uuid}`;
 
-        const createdKey = await props.agent.keyManagerCreate({
+        const createdKey = await createAgent.keyManagerCreate({
             type: 'Ed25519',
             kms: 'local',
         });
@@ -53,7 +58,7 @@ export async function createDID(props: { method: string, alias: string, isPrimar
 
         console.log("🔄 In Progress: Creating DID", didString);
 
-        const did = await props.agent.didManagerCreate({
+        const did = await createAgent.didManagerCreate({
             provider: `did:${method}`,
             alias: didString,
             options: {
@@ -100,7 +105,7 @@ export async function createDID(props: { method: string, alias: string, isPrimar
 
         const mnemonic = await convertPrivateKeyToRecovery(hexToBase64(privateKey.privateKeyHex));
 
-        const signedCreation = await props.agent.createVerifiableCredential({
+        const signedCreation = await createAgent.createVerifiableCredential({
             credential,
             proofFormat: 'jwt'
         });
@@ -112,7 +117,11 @@ export async function createDID(props: { method: string, alias: string, isPrimar
     }
 }
 
-export async function importDID(didString: string, privateKey: string, method: string, agent: IOVAgent): Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }> {
+export async function importDID(didString: string, privateKey: string, method: string, agent?: IOVAgent): Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }> {
+    const importAgent = agent || parentAgent;
+    if(!importAgent) {
+        throw new Error("Agent not found");
+    }
     try {
         // Convert the private key from hex to Uint8Array
         const privateKeyBytes = Uint8Array.from(Buffer.from(privateKey, 'base64'));
@@ -190,7 +199,7 @@ export async function importDID(didString: string, privateKey: string, method: s
             }
         ];
         
-        const did = await agent.didManagerImport({
+        const did = await importAgent.didManagerImport({
             did: didString,
             keys: [{
                 kid: verifiedAuthentication.id,
@@ -218,7 +227,7 @@ export async function importDID(didString: string, privateKey: string, method: s
             expirationDate: new Date().toISOString()
         };
 
-        const signedImport = await agent.createVerifiableCredential({
+        const signedImport = await importAgent.createVerifiableCredential({
             credential,
             proofFormat: 'jwt'
         });
