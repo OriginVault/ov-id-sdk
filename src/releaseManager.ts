@@ -34,9 +34,9 @@ export async function signRelease(agentStore: AgentStore | null) {
     spinner.start();
 
     try {
-        const { agent, key, publishWorkingKey, publishRelease }: {
+        const { agent, did, publishWorkingKey, publishRelease }: {
             agent: IOVAgent;
-            key: string;
+            did: string;
             publishWorkingKey: () => Promise<boolean>;
             publishRelease: (metadata: any, name: string, version: string) => Promise<any>;
             getBundleHash: () => Promise<string>;
@@ -56,7 +56,7 @@ export async function signRelease(agentStore: AgentStore | null) {
 
         const releaseMetadata: CredentialPayload = {
             id: releaseId,
-            issuer: key,
+            issuer: did,
             credentialSubject: {
                 name: packageJson.name,
                 version: execSync('npm pkg get version').toString().trim().replace(/"/g, ''),
