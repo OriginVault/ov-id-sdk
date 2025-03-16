@@ -1,15 +1,18 @@
 import dotenv from 'dotenv';
 import { createDID } from '../src/identityManager.ts';
-import { userStore } from '../src/userAgent.js';
+import { packageStore, privateKeyStore} from '../src/packageAgent.ts';
 
 dotenv.config();
 
+
 (async () => {
     const { agent } = await packageStore.initialize();
+
     try {
         const { did, mnemonic, credentials } = await createDID({
-            method: 'cheqd:mainnet',
+            method: 'cheqd:testnet',
             agent,
+            privateKeyStore
         });
         console.log("🔑 DID:", did);
         console.log("🔑 MNEMONIC:", mnemonic);

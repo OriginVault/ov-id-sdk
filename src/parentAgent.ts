@@ -67,12 +67,13 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
             store: new MemoryDIDStore(),
             defaultProvider: 'did:cheqd:mainnet',
             providers: {
+                'did:cheqd': cheqdMainnetProvider,
                 'did:cheqd:mainnet': cheqdMainnetProvider,
                 'did:cheqd:testnet': new CheqdDIDProvider({
                     defaultKms: 'local',
                     networkType: 'testnet' as CheqdNetwork,
                     dkgOptions: { chain: 'cheqdTestnet' },
-                    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
+                    rpcUrl: 'https://rpc.cheqd.network',
                     cosmosPayerSeed,
                 }),
                 'did:key': new KeyDIDProvider({
@@ -91,7 +92,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
 
     if (didMnemonic) {
         const parentPrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
-        const { credentials } = await importDID(parentDIDString, parentPrivateKey, 'cheqd', parentAgent);
+        const { credentials } = await importDID({ didString: parentDIDString, privateKey: parentPrivateKey, method: 'cheqd', agent: parentAgent });
 
         signedVCs.concat(credentials);
     }
@@ -252,7 +253,7 @@ interface AgentStore {
     cheqdMainnetProvider: CheqdDIDProvider | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
     getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
+    createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
     importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
     getPrimaryDID: () => Promise<string>,
     [key: string]: any,
@@ -267,8 +268,8 @@ const parentStore: AgentStore = {
     credentials: signedVCs,
     listDids: async (provider?: string) => parentAgent ? listDIDs(parentAgent, provider) : [] as IIdentifier[],
     getDID: async (didString: string) => getDIDKeys(didString),
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => parentAgent ? createDID({ ...props, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
-    importDID: (didString: string, privateKey: string, method: string) => parentAgent ? importDID(didString, privateKey, method, parentAgent) : Promise.reject(new Error("Parent agent not initialized")),
+    createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => parentAgent ? createDID({ ...props, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
+    importDID: (didString: string, privateKey: string, method: string) => parentAgent ? importDID({ didString, privateKey, method, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
     getPrimaryDID: async () => await getParentDIDFromPackageJson(),
     getBundleHash: async () => await getParentBundleHash(),
     publishWorkingKey,

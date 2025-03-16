@@ -4,10 +4,12 @@ import { userStore } from '../src/userAgent.js';
 
 dotenv.config();
 
+const testnetDID = process.env.TESTNET_DID;
+
 (async () => {
     await userStore.initialize();
     try {
-        const mnemonic = await retrieveMnemonicForDID('did:cheqd:mainnet:3e24a9d3-856f-5f5c-9baa-2b157c0e4d59');
+        const mnemonic = await retrieveMnemonicForDID(testnetDID);
         console.log("🔑 MNEMONIC:", mnemonic);
     } catch (error) {
         console.error("❌ Error creating DID:", error);

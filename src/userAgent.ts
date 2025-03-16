@@ -11,7 +11,7 @@ import { DIDClient } from '@verida/did-client';
 import { Resolver } from 'did-resolver';
 import dotenv from 'dotenv';
 import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
-import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -110,13 +110,14 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
             store: new MemoryDIDStore(),
             defaultProvider: 'did:cheqd:mainnet',
             providers: {
+                'did:cheqd': cheqdMainnetProvider,
                 'did:cheqd:mainnet': cheqdMainnetProvider,
                 'did:cheqd:testnet': new CheqdDIDProvider({
                     defaultKms: 'local',
                     networkType: 'testnet' as CheqdNetwork,
                     dkgOptions: { chain: 'cheqdTestnet' },
-                    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-                    cosmosPayerSeed: process.env.COSMOS_PAYER_SEED || '',
+                    rpcUrl: 'https://rpc.cheqd.network',
+                    cosmosPayerSeed,
                 }),
                 'did:key': new KeyDIDProvider({
                     defaultKms: 'local',
@@ -136,7 +137,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
     const primaryDID = await getPrimaryDID();
     if(primaryDID && didMnemonic) {
         const primaryPrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
-        const { credentials } = await importDID(primaryDID, primaryPrivateKey, 'cheqd', userAgent);
+        const { credentials } = await importDID({ didString: primaryDID, privateKey: primaryPrivateKey, method: 'cheqd', agent: userAgent });
 
         signedVCs.concat(credentials);
 
@@ -152,7 +153,7 @@ interface AgentStore {
     cheqdMainnetProvider: CheqdDIDProvider | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
     getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
+    createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
     importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
     getPrimaryDID: () => Promise<string>,
     [key: string]: any,
@@ -166,8 +167,8 @@ const userStore: AgentStore = {
     keyStore,
     listDids: (provider?: string) => userAgent ? listDIDs(userAgent, provider) : Promise.reject(new Error("User agent not initialized")),
     getDID: (didString: string) => userAgent ? getDIDKeys(didString) : Promise.reject(new Error("User agent not initialized")),
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => userAgent ? createDID({ ...props, agent: userAgent }) : Promise.reject(new Error("User agent not initialized")),
-    importDID: (didString: string, privateKey: string, method: string) => userAgent ? importDID(didString, privateKey, method, userAgent) : Promise.reject(new Error("User agent not initialized")),
+    createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => userAgent ? createDID({ ...props, agent: userAgent }) : Promise.reject(new Error("User agent not initialized")),
+    importDID: (didString: string, privateKey: string, method: string) => userAgent ? importDID({ didString, privateKey, method, agent: userAgent }) : Promise.reject(new Error("User agent not initialized")),
     getPrimaryDID: async () => await getPrimaryDID() || Promise.reject(new Error("User agent not initialized")),
 }
 
