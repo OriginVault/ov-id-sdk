@@ -1,12 +1,6 @@
-import { createAgent, } from '@veramo/core';
-import { DIDManager, MemoryDIDStore, } from '@veramo/did-manager';
-import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { CredentialPlugin } from '@veramo/credential-w3c';
-import { KeyManagementSystem } from '@veramo/kms-local';
-import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver';
-import { KeyDIDProvider } from '@veramo/did-provider-key';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
+import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
-import { Resolver, DIDResolver, Resolvable, DIDResolutionOptions, ParsedDID } from 'did-resolver';
 import { IOVAgent, ICreateVerifiableCredentialArgs, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
 import { getSelfBundlePrivateKey, getPackageDIDFromPackageJson, getSelfBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
@@ -18,10 +12,8 @@ import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { co2 } from "@tgwf/co2";
 import { getResolver } from "@verida/vda-did-resolver";
-import { DIDClient } from '@verida/did-client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,23 +21,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key', 'vda']);
-const veridaDidClient = new DIDClient({
-    network: process.env.NODE_ENV === 'development' ? 'local' : 'banksia' as any,
-    rpcUrl: process.env.VDA_RPC_URL || 'https://polygon-rpc.com',
-});
-
 const vdaResolver = getResolver();
 
-// Create a key store instance
-const keyStore = new MemoryKeyStore();
-export const privateKeyStore = new MemoryPrivateKeyStore();
-
-declare enum CheqdNetwork {
-    Mainnet = "mainnet",
-    Testnet = "testnet"
-}
-
 const packageJsonPath = path.join(__dirname, '../package.json');
+
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
 let packageAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
@@ -59,51 +38,13 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE || '';
 
-    cheqdMainnetProvider = new CheqdDIDProvider({
-        defaultKms: 'local',
-        networkType: 'mainnet' as CheqdNetwork,
-        dkgOptions: { chain: 'cheqdMainnet' },
-        rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-        cosmosPayerSeed,
-    })
+    cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
 
-    const resolvers = {
-        resolver: new Resolver({
-            ...universalResolver,
-            ...vdaResolver
-        }),
+    packageAgent = createOVAgent(cheqdMainnetProvider, universalResolver, vdaResolver);
+
+    if(!packageAgent) {
+        throw new Error("Package agent could not be initialized");
     }
-
-    packageAgent = createAgent<IOVAgent>({
-        plugins: [
-            new KeyManager({
-                store: keyStore,
-                kms: {
-                    local: new KeyManagementSystem(privateKeyStore),
-                },
-            }),
-            new DIDManager({
-                store: new MemoryDIDStore(),
-                defaultProvider: 'did:cheqd:mainnet',
-                providers: {
-                    'did:cheqd': cheqdMainnetProvider,
-                    'did:cheqd:mainnet': cheqdMainnetProvider,
-                    'did:cheqd:testnet': new CheqdDIDProvider({
-                        defaultKms: 'local',
-                        networkType: 'testnet' as CheqdNetwork,
-                        dkgOptions: { chain: 'cheqdTestnet' },
-                        rpcUrl: 'https://rpc.cheqd.network',
-                        cosmosPayerSeed,
-                    }),
-                    'did:key': new KeyDIDProvider({
-                        defaultKms: 'local',
-                    }),
-                }
-            }),
-            new DIDResolverPlugin(resolvers),
-            new CredentialPlugin(),
-        ],
-    })
 
     const packageJsonDIDString = await getPackageDIDFromPackageJson();
 
@@ -271,19 +212,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
     }
 
     return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, privateKeyStore };
-}
-
-interface AgentStore {
-    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey: (() => Promise<string | undefined>) | null, publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
-    agent: IOVAgent | null,
-    keyStore: MemoryKeyStore,
-    cheqdMainnetProvider: CheqdDIDProvider | null,
-    listDids: (provider?: string) => Promise<IIdentifier[]>,
-    getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
-    createDID: (props: { method: string, alias: string, isPrimary?: boolean  }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
-    importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
-    getPrimaryDID: () => Promise<string>,
-    [key: string]: any,
 }
 
 const packageStore: AgentStore = {

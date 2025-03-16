@@ -24,9 +24,10 @@
     "prestart": "npm run tsc",
     "start": "node dist/index.js",
     "sign-release": "npx tsx scripts/sign-release-metadata.js",
+    "get-mnemonic": "npx tsx scripts/get-mnemonic.js",
+    "resolve-did": "npx tsx scripts/resolve-did.js",
     "create-did": "npx tsx scripts/create-did.js",
     "import-did": "npx tsx scripts/import-did.js",
-    "generate-multibase-key": "npx tsx scripts/generate-multibase-key.js",
     "pre-publish": "npm run build && npm run sign-release"
   },
   "repository": {

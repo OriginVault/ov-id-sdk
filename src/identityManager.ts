@@ -1,6 +1,6 @@
 import { userAgent, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE } from './userAgent.js';
 import { bases } from 'multiformats/basics';
-import { retrievePrivateKey, storePrivateKey } from './storePrivateKeys.js';
+import { storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
 import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
@@ -10,7 +10,7 @@ import inquirer from 'inquirer';
 import { parentAgent } from './parentAgent.js';
 import { getEnvironmentMetadata } from './environment.js';
 import { MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { privateKeyStore } from './packageAgent.js';
+import { privateKeyStore } from './OVAgent.js';
 import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrieveKeys, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
@@ -18,7 +18,6 @@ import path from 'path';
 import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, ICheqdUpdateIdentifierArgs, DIDDocument } from '@originvault/ov-types';
 import axios from 'axios';
 import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
-import { KeyStore } from '@veramo/data-store';
 
 const MULTICODEC_ED25519_HEADER = new Uint8Array([0xed, 0x01]);
 
@@ -35,7 +34,7 @@ function isValidHex(str: string): boolean {
     return /^[0-9a-fA-F]*$/.test(str);
 }
 
-export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
+export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, publicKeyHex: string, privateKeyHex: string, credentials: VerifiableCredential[] }> {
     const createAgent = props.agent || parentAgent;
     if(!createAgent) {
         throw new Error("Agent not found");
@@ -115,7 +114,7 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
             proofFormat: 'jwt'
         });
 
-        return { did, mnemonic, credentials: [signedCreation] };
+        return { did, mnemonic, publicKeyHex, privateKeyHex: privateKey.privateKeyHex, credentials: [signedCreation] };
     } catch (error) {
         console.error("❌ Error creating DID:", error);
         throw error;
