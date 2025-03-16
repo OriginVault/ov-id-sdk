@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { createDID } from '../src/identityManager.ts';
-import { packageStore, privateKeyStore} from '../src/packageAgent.ts';
+import { packageStore } from '../src/packageAgent.ts';
+import { privateKeyStore } from '../src/OVAgent.ts';
 
 dotenv.config();
 

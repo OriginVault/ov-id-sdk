@@ -1,4 +1,4 @@
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { IOVAgent, ICreateVerifiableCredentialArgs, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';

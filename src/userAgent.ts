@@ -9,7 +9,7 @@ import path from 'path';
 import os from 'os';
 import { ensureKeyring } from './storePrivateKeys.js';
 import { convertRecoveryToPrivateKey } from './encryption.js';
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
 
 dotenv.config();
 

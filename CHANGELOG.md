@@ -1,5 +1,8 @@
 ## Change Log
 
+## v0.0.12
+ - [fix]: Fixes `privateKeyStore` imports from specific agents.
+
 ## v0.0.11
 - [feat]: Adds `createDID` and `importDID` functions to the package.
 - [feat]: Adds `sample.env` file to the package.
