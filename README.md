@@ -33,9 +33,27 @@ npm install @originvault/ov-id-sdk
 ### **1️⃣ Create or Import a DID**
 ```typescript
 import { createDID, importDID } from "@originvault/ov-id-sdk";
+import { userStore } from "@originvault/ov-id-sdk";
 
 // ✅ Create a new DID
-const { did } = await createDID("cheqd");
+const { agent } = await userStore.initialize();
+const publisherDID = await userStore.getPrimaryDID();
+const { did } = await createDID({ method: "cheqd", agent, publisherDID});
+
+console.log("New DID:", did);
+
+// Optional: Set the new DID as the primary DID & customize the alias
+const { agent } = await userStore.initialize();
+const publisherDID = await userStore.getPrimaryDID();
+
+const { did } = await createDID({ 
+      method: "cheqd", 
+      agent, 
+      publisherDID, 
+      isPrimary: true, 
+      alias: "did:cheqd:mainnet:1234"
+});
+
 console.log("New DID:", did);
 
 // ✅ Import an existing DID from a mnemonic

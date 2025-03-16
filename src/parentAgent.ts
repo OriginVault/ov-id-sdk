@@ -1,12 +1,7 @@
-import { createAgent } from '@veramo/core';
-import { DIDManager, MemoryDIDStore } from '@veramo/did-manager';
-import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { CredentialPlugin } from '@veramo/credential-w3c';
-import { KeyManagementSystem } from '@veramo/kms-local';
-import { getUniversalResolverFor, DIDResolverPlugin } from '@veramo/did-resolver';
-import { KeyDIDProvider } from '@veramo/did-provider-key';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
+import { MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
+import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
-import { Resolver } from 'did-resolver';
 import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IResolver, IKeyManager, ICredentialPlugin, IDIDManager, TAgent, IIdentifier, IOVAgent } from '@originvault/ov-types';
 import { getParentDIDFromPackageJson, getParentBundlePrivateKey, getParentBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
@@ -17,23 +12,14 @@ import { importDID, listDIDs, getDIDKeys, createDID } from './identityManager.js
 import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
-import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { co2 } from "@tgwf/co2";
 
 dotenv.config();
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
-
-// Create a key store instance
-const keyStore = new MemoryKeyStore();
-const privateKeyStore = new MemoryPrivateKeyStore();
-
-declare enum CheqdNetwork {
-    Mainnet = "mainnet",
-    Testnet = "testnet"
-}
-
 const packageJsonPath = path.join(process.cwd(), './package.json');
+
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
 export let parentAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
@@ -47,51 +33,19 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PARENT_DID_RECOVERY_PHRASE || '';
 
-    cheqdMainnetProvider = new CheqdDIDProvider({
-        defaultKms: 'local',
-        networkType: 'mainnet' as CheqdNetwork,
-        dkgOptions: { chain: 'cheqdMainnet' },
-        rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-        cosmosPayerSeed,
-    })
+    cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
 
-    parentAgent = createAgent<IOVAgent>({
-        plugins: [
-            new KeyManager({
-                store: keyStore,
-            kms: {
-                local: new KeyManagementSystem(privateKeyStore),
-            },
-        }),
-        new DIDManager({
-            store: new MemoryDIDStore(),
-            defaultProvider: 'did:cheqd:mainnet',
-            providers: {
-                'did:cheqd:mainnet': cheqdMainnetProvider,
-                'did:cheqd:testnet': new CheqdDIDProvider({
-                    defaultKms: 'local',
-                    networkType: 'testnet' as CheqdNetwork,
-                    dkgOptions: { chain: 'cheqdTestnet' },
-                    rpcUrl: process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443',
-                    cosmosPayerSeed,
-                }),
-                'did:key': new KeyDIDProvider({
-                    defaultKms: 'local',
-                }),
-            }
-        }),
-        new DIDResolverPlugin({
-            resolver: new Resolver(universalResolver)
-        }),
-        new CredentialPlugin(),
-        ],
-    })
+    parentAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
+
+    if(!parentAgent) {
+        throw new Error("Parent agent could not be initialized");
+    }
 
     const parentDIDString = await getParentDIDFromPackageJson();
 
     if (didMnemonic) {
         const parentPrivateKey = await convertRecoveryToPrivateKey(didMnemonic);
-        const { credentials } = await importDID(parentDIDString, parentPrivateKey, 'cheqd', parentAgent);
+        const { credentials } = await importDID({ didString: parentDIDString, privateKey: parentPrivateKey, method: 'cheqd', agent: parentAgent });
 
         signedVCs.concat(credentials);
     }
@@ -245,19 +199,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease };
 }
 
-interface AgentStore {
-    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey: (() => Promise<string | undefined>) | null, publishRelease: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
-    agent: IOVAgent | null,
-    keyStore: MemoryKeyStore,
-    cheqdMainnetProvider: CheqdDIDProvider | null,
-    listDids: (provider?: string) => Promise<IIdentifier[]>,
-    getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,
-    importDID: (didString: string, privateKey: string, method: string) => Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }>,
-    getPrimaryDID: () => Promise<string>,
-    [key: string]: any,
-}
-
 const parentStore: AgentStore = {
     initialize: initializeParentAgent,
     agent: parentAgent,
@@ -267,8 +208,8 @@ const parentStore: AgentStore = {
     credentials: signedVCs,
     listDids: async (provider?: string) => parentAgent ? listDIDs(parentAgent, provider) : [] as IIdentifier[],
     getDID: async (didString: string) => getDIDKeys(didString),
-    createDID: (props: { method: string, alias: string, isPrimary: boolean }) => parentAgent ? createDID({ ...props, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
-    importDID: (didString: string, privateKey: string, method: string) => parentAgent ? importDID(didString, privateKey, method, parentAgent) : Promise.reject(new Error("Parent agent not initialized")),
+    createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => parentAgent ? createDID({ ...props, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
+    importDID: (didString: string, privateKey: string, method: string) => parentAgent ? importDID({ didString, privateKey, method, agent: parentAgent }) : Promise.reject(new Error("Parent agent not initialized")),
     getPrimaryDID: async () => await getParentDIDFromPackageJson(),
     getBundleHash: async () => await getParentBundleHash(),
     publishWorkingKey,

@@ -30,7 +30,7 @@ export async function createResource({ data, did, name, version, provider, agent
         
         const { keyName: id, kid: key } = resolvedKeys;
         
-        const verificationMethod = await getVerifiedAuthentication(id as string);
+        const verificationMethod = await getVerifiedAuthentication(id as string, agent);
 
         // Extract the last part of the DID string to use as the collectionId
         const collectionId = (id as string).split(':').pop() || '';

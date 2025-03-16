@@ -1,5 +1,11 @@
 ## Change Log
 
+## v0.0.11
+- [feat]: Adds `createDID` and `importDID` functions to the package.
+- [feat]: Adds `sample.env` file to the package.
+- [feat]: Adds `generate-multibase-key` script to generate a multibase key appropriately.
+- [feat]: Adds `testnet` support to the package.
+
 ## v0.0.10
 - [fix]: Fixes `getDID` to return `undefined` if the DID is not found in the keyring.
 - [fix]: Fixes keyring encoding

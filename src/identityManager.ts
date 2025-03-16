@@ -1,38 +1,48 @@
-import { userAgent, privateKeyStore, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE, userStore } from './userAgent.js';
-import base58 from 'bs58';
+import { userAgent, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE } from './userAgent.js';
+import { bases } from 'multiformats/basics';
 import { storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
 import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
+import { fromString } from 'uint8arrays';
 import os from 'os';
 import inquirer from 'inquirer';
 import { parentAgent } from './parentAgent.js';
 import { getEnvironmentMetadata } from './environment.js';
+import { MemoryPrivateKeyStore } from '@veramo/key-manager';
+import { privateKeyStore } from './OVAgent.js';
 import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrieveKeys, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
-import { IOVAgent, IIdentifier, DIDAssertionCredential, VerifiableCredential } from '@originvault/ov-types';
+import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, ICheqdUpdateIdentifierArgs, DIDDocument } from '@originvault/ov-types';
 import axios from 'axios';
 import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 
-export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }> {
+const MULTICODEC_ED25519_HEADER = new Uint8Array([0xed, 0x01]);
+
+function toMultibaseRaw(key) {
+    const multibase = new Uint8Array(MULTICODEC_ED25519_HEADER.length + key.length);
+
+    multibase.set(MULTICODEC_ED25519_HEADER);
+    multibase.set(key, MULTICODEC_ED25519_HEADER.length);
+
+	return bases['base58btc'].encode(multibase);
+}
+
+function isValidHex(str: string): boolean {
+    return /^[0-9a-fA-F]*$/.test(str);
+}
+
+export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, publicKeyHex: string, privateKeyHex: string, credentials: VerifiableCredential[] }> {
     const createAgent = props.agent || parentAgent;
     if(!createAgent) {
         throw new Error("Agent not found");
     }
     try {
-        ensurePrimaryDIDWallet();
-        const primaryDid = await userStore?.getPrimaryDID() || '';
-        if (primaryDid.length === 0 && !props.isPrimary) {
-            throw new Error("Primary DID not found.");
-        }
-
-        const primaryAuthentication = await getVerifiedAuthentication(props.isPrimary ? primaryDid : props.alias || '');
-        console.log("🔑 primaryAuthentication", primaryAuthentication);
         const method = props.method || 'cheqd:testnet';
        
-        const uuid = uuidv5(primaryDid + new Date().toISOString(), uuidv5.URL);
+        const uuid = uuidv5(Math.random().toString(36).substring(2, 15) + new Date().toISOString(), uuidv5.URL);
         const didString = props.alias || `did:${method}:${uuid}`;
 
         const createdKey = await createAgent.keyManagerCreate({
@@ -47,14 +57,8 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
 
         const { publicKeyHex, kid } = createdKey
         const didKid = `${didString}#${kid}`;
-
-        const publicKeyBuffer = Buffer.from(publicKeyHex, 'hex');
-
-        const prefix = Buffer.from([0xed, 0x01]);
-        const prefixedPublicKey = Buffer.concat([prefix, publicKeyBuffer]);
-
-        const publicKeyBase58 = base58.encode(prefixedPublicKey);
-        const publicKeyMultibase = `z${publicKeyBase58}`;
+        const publicKey = fromString(publicKeyHex, 'hex');
+        const publicKeyMultibase = toMultibaseRaw(publicKey);
 
         console.log("🔄 In Progress: Creating DID", didString);
 
@@ -110,30 +114,232 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
             proofFormat: 'jwt'
         });
 
-        return { did, mnemonic, credentials: [signedCreation] };
+        return { did, mnemonic, publicKeyHex, privateKeyHex: privateKey.privateKeyHex, credentials: [signedCreation] };
     } catch (error) {
         console.error("❌ Error creating DID:", error);
         throw error;
     }
 }
 
-export async function importDID(didString: string, privateKey: string, method: string, agent?: IOVAgent): Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }> {
+export async function createDIDWithAdmin(props: { method: string, agent: IOVAgent,  publisherDID: string, keyStore?: MemoryPrivateKeyStore, alias?: string, isPrimary?: boolean}): Promise<{ did: IIdentifier, mnemonic: string, adminMnemonic: string, credentials: VerifiableCredential[] }> {
+    const createAgent = props.agent;
+    const publisherDID = props.publisherDID;
+    if(!createAgent || !publisherDID) {
+        throw new Error("Cannot create DID without agent and publisher DID");
+    }
+    try {
+        ensurePrimaryDIDWallet();
+        if (!publisherDID && !props.isPrimary) {
+            throw new Error("Primary DID not found.");
+        }
+
+        const method = props.method || 'cheqd:testnet';
+        const uuid = uuidv5(publisherDID + new Date().toISOString(), uuidv5.URL);
+        const didString = props.alias || `did:${method}:${uuid}`;
+
+        const createdKey = await createAgent.keyManagerCreate({
+            type: 'Ed25519',
+            kms: 'local',
+        });
+
+        const adminKey = await createAgent.keyManagerCreate({
+            type: 'Ed25519',
+            kms: 'local',
+        });
+
+        const { publicKeyHex, kid } = createdKey;
+        const { publicKeyHex: adminPublicKeyHex, kid: adminKid } = adminKey;
+        const didKid = `${didString}#${kid}`;
+        const adminDidKid = `${didString}#${adminKid}`;
+
+        const publicKey = fromString(publicKeyHex, 'hex');
+        const publicKeyMultibase = toMultibaseRaw(publicKey);
+        const adminPublicKey = fromString(adminPublicKeyHex, 'hex');
+        const adminPublicKeyMultibase = toMultibaseRaw(adminPublicKey);
+
+        console.log("🔄 In Progress: Creating DID", didString);
+
+        const privateKey = await props.keyStore?.getKey({ alias: kid }) || await privateKeyStore.getKey({ alias: kid });
+        const adminPrivateKey = await props.keyStore?.getKey({ alias: adminKid }) || await privateKeyStore.getKey({ alias: adminKid });
+
+
+        const publisher = await createAgent.resolveDid({ didUrl: publisherDID });
+        if(!publisher || !publisher.didDocument) {
+            throw new Error("Publisher DID not found.");
+        }
+
+        //update publisher DID with new admin key
+        try {
+            console.log("🔄 In Progress: Updating publisher DID", publisher.didDocument.id);
+            const updatedPublisher = await updateDID({
+                didString: publisherDID,
+                agent: createAgent,
+                document: {
+                ...publisher.didDocument,
+                verificationMethod: [
+                    ...(publisher.didDocument as any)?.verificationMethod,
+                    {
+                        id: adminDidKid,
+                        type: 'Ed25519VerificationKey2020',
+                        controller: publisherDID,
+                        publicKeyHex: adminPublicKeyHex,
+                        publicKeyMultibase: adminPublicKeyMultibase,
+                        }
+                    ]
+                },
+                keyStore: props.keyStore || privateKeyStore
+            });
+            console.log("🔄 In Progress: Updated publisher DID", updatedPublisher);
+        } catch (error) {
+            console.error("❌ Error updating publisher DID:", error);
+        }
+
+        const createArgs: ICheqdCreateIdentifierArgs = {
+            kms: 'local',
+            keys: [
+                {
+                    kid: adminKid,
+                    type: 'Ed25519',
+                    privateKeyHex: adminPrivateKey?.privateKeyHex,
+                    publicKeyHex: adminPublicKeyHex,
+                },
+                {
+                    kid: adminDidKid,
+                    type: 'Ed25519',
+                    privateKeyHex: privateKey?.privateKeyHex,
+                    publicKeyHex,
+                }
+            ],
+            alias: didString,
+            document: {
+                id: didString,
+                service: [],
+                authentication: [
+                    didKid, 
+                    adminKid,
+                ],
+                controller: [didString, publisherDID],
+                verificationMethod: [
+                    {
+                        id: didKid,
+                        type: 'Ed25519VerificationKey2020',
+                        controller: didString,
+                        publicKeyHex,
+                        publicKeyMultibase,
+                    },
+                    {
+                        id: adminKid,
+                        type: 'Ed25519VerificationKey2020',
+                        controller: publisherDID,
+                        publicKeyHex: adminPublicKeyHex,
+                        publicKeyMultibase: adminPublicKeyMultibase,
+                    }
+                ]
+            }
+        }
+
+        console.log("🔄 In Progress: Creating DID", JSON.stringify(createArgs, null, 2));
+
+        const did = await createAgent.didManagerCreate({ options: createArgs });
+
+        console.log("Saving private key to keyring");
+        await storePrivateKey(didString, Buffer.from(privateKey.privateKeyHex, 'hex'), kid);
+        await storePrivateKey(adminDidKid, Buffer.from(adminPrivateKey.privateKeyHex, 'hex'), adminKid);
+
+        const credentialId = uuidv5(didString + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
+        const credential: DIDAssertionCredential = {
+            id: credentialId,
+            issuer: { id: didString },
+            credentialSubject: {
+                id: didString,
+                assertionType: "did-creation",
+                assertionDate: new Date().toISOString(),
+                assertionResult: 'Passed',
+            },
+            '@context': ['https://www.w3.org/2018/credentials/v1'],
+            type: ['VerifiableCredential'],
+            expirationDate: new Date().toISOString()
+        };
+
+        const mnemonic = await convertPrivateKeyToRecovery(hexToBase64(privateKey.privateKeyHex));
+        const adminMnemonic = await convertPrivateKeyToRecovery(hexToBase64(adminPrivateKey.privateKeyHex));
+        const signedCreation = await createAgent.createVerifiableCredential({
+            credential,
+            proofFormat: 'jwt'
+        });
+
+        return { did, mnemonic, adminMnemonic, credentials: [signedCreation] };
+    } catch (error) {
+        console.error("❌ Error creating DID:", error);
+        throw error;
+    }
+}
+
+export async function updateDID(props: { didString: string, agent: IOVAgent,  document: DIDDocument, keyStore: MemoryPrivateKeyStore}): Promise<{ did: IIdentifier }> {
+    const agent = props.agent;
+    if(!agent) {
+        throw new Error("Cannot update DID without agent");
+    }
+    try {
+        console.log("🔄 In Progress: Updating DID", props.didString);
+
+        if(!props.document.verificationMethod) {
+            throw new Error("Verification method ID not found");
+        }
+
+        const privateKey = await props.keyStore.getKey({ alias: props.document.verificationMethod[0].id });
+        const storedKey = await agent.keyManagerGet({ kid: props.document.verificationMethod[0].id });
+        console.log("🔄 Private key", {
+                        kid: props.document.verificationMethod[0].id,
+                        type: 'Ed25519',
+                        privateKeyHex: privateKey?.privateKeyHex,
+                        publicKeyHex: storedKey?.publicKeyHex,
+                    });
+        const privateKeyHex = privateKey?.privateKeyHex || '';
+        if (!isValidHex(privateKeyHex)) {
+            throw new Error("Invalid privateKeyHex: must be a valid hexadecimal string");
+        }
+        const updatedDid = await agent.didManagerUpdate({
+            did: props.didString,
+            document: props.document,
+            options: {
+				kms: 'local',
+				keys: [
+                    {
+                        kid: props.document.verificationMethod[0].id,
+                        type: 'Ed25519',
+                        privateKeyHex: privateKeyHex,
+                        publicKeyHex: storedKey?.publicKeyHex,
+                    }
+                ]
+			}
+        });
+        return { did: updatedDid };
+    } catch (error) {
+        console.error("❌ Error updating DID:", error);
+        throw error;
+    }
+}
+
+export async function importDID({ didString, privateKey, method, agent }: { didString: string, privateKey: string, method: string, agent?: IOVAgent}): Promise<{ did: IIdentifier, credentials: VerifiableCredential[] }> {
     const importAgent = agent || parentAgent;
     if(!importAgent) {
         throw new Error("Agent not found");
     }
     try {
         // Convert the private key from hex to Uint8Array
-        const privateKeyBytes = Uint8Array.from(Buffer.from(privateKey, 'base64'));
+        const privateKeyBytes = Buffer.from(privateKey, 'base64');
         // Derive public key
         const privateKeySub = privateKeyBytes.subarray(0, 32);
-        const publicKeyBytes = await ed25519.getPublicKey(privateKeySub);
-        const derivedPublicKey = Buffer.from(publicKeyBytes).toString('base64');
+        const publicKeyBytes = ed25519.getPublicKey(privateKeySub);
+
+        const derivedPublicKeyMultibase = toMultibaseRaw(publicKeyBytes);
 
         // Get the public key multibase from the DID document
-        const verifiedAuthentication = await getVerifiedAuthentication(didString);
+        const verifiedAuthentication = await getVerifiedAuthentication(didString, importAgent);
 
         const publicKeyMultibase = verifiedAuthentication?.publicKeyMultibase;
+
         if(!publicKeyMultibase) {
             console.error("❌ Public key multibase not found");
             return {
@@ -147,12 +353,9 @@ export async function importDID(didString: string, privateKey: string, method: s
             };
         }
 
-        const publicKeyBuffer = multibase.decode(Buffer.from(publicKeyMultibase, 'utf-8'));
-        const publicKeySliced = publicKeyBuffer.slice(2);
-        const documentPublicKey = Buffer.from(publicKeySliced).toString('base64');
 
         // Compare derived public key with the public key in the DID document
-        if (derivedPublicKey !== documentPublicKey) {
+        if (derivedPublicKeyMultibase !== publicKeyMultibase) {
             console.error("❌ Private key does not match the public key in DID document");
             return {
                 did: {

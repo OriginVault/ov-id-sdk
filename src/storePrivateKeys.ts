@@ -2,7 +2,6 @@ import { Keyring } from '@polkadot/keyring';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import os from 'os';
 import path from 'path';
-import { userAgent } from './userAgent.js';
 import * as ed25519 from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
@@ -10,8 +9,7 @@ import fs from 'fs';
 import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
 import { convertPrivateKeyToRecovery, decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
-import { KeyringPair$Json, KeyringPair$Meta } from '@polkadot/keyring/types.js';
-import { VerifiableCredential } from '@originvault/ov-types';
+import { IOVAgent, VerifiableCredential } from '@originvault/ov-types';
 
 dotenv.config();
 
@@ -84,21 +82,30 @@ export async function ensureKeyring(): Promise<Keyring> {
 }
 
 // Exported functions
-export const getVerifiedAuthentication = async (did: string): Promise<VerificationMethod | null> => {
-    let resolvedDid: DIDResolutionResult | undefined = await userAgent?.resolveDid({ didUrl: did });
-    if (!resolvedDid || resolvedDid.didResolutionMetadata?.error === "invalidDid") {
-        console.error("❌ DID could not be resolved", did);
+export const getVerifiedAuthentication = async (did: string, agent?: IOVAgent, kid?: string): Promise<VerificationMethod | null> => {
+    if(!agent) {
+        throw new Error("Agent not found");
+    }
+    let resolvedDid: DIDResolutionResult | undefined = await agent?.resolveDid({ didUrl: did });
+
+    if (!resolvedDid || resolvedDid.didResolutionMetadata?.error) {
+        console.error("❌ DID could not be resolved", did, resolvedDid);
         return null;
     }
-    
+
     const didDoc = resolvedDid.didDocument;
 
-    const authentication = didDoc?.authentication?.[0];
+    const authentication = kid ? didDoc?.authentication?.find(auth => {
+        if(typeof auth === 'string') {
+            return auth === kid;
+        }
+        return auth.id === kid;
+    }) : didDoc?.authentication?.[0];
     if (!authentication) {
         console.error("❌ No authentication found for DID", did);
         return null;
     }
-    const verificationMethods = didDoc.verificationMethod;
+    const verificationMethods = didDoc?.verificationMethod;
     if (!verificationMethods) {
         console.error("❌ No verification method found for DID", did);
         return null;
@@ -164,23 +171,27 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array, k
     }
 }
 
-export async function retrievePrivateKey(keyName: string): Promise<string | undefined> {
+export async function retrievePrivateKey(keyName: string): Promise<Uint8Array | undefined> {
     try {
         const kr = await ensureKeyring();
         const pairs = kr.getPairs().map(pair => pair.toJson());
         const pair = pairs.find(p => p.meta.keyName === keyName);
-        return Buffer.from(kr.decodeAddress(pair?.address)).toString('base64');
+        return kr.decodeAddress(pair?.address)
     } catch (error) {
         console.error("❌ Error retrieving private key:", error);
         return undefined;
     }
 }
 
-export async function retrieveKeys(keyName: string): Promise<KeyringPair$Meta | undefined> {
+export async function retrieveKeys(keyName: string): Promise<{ keyName: string, isPrimary: boolean, kid: string } | undefined> {
     const kr = await ensureKeyring();
     const pairs = kr.getPairs().map(pair => pair.toJson());
     const pair = pairs.find(p => p.meta.keyName === keyName);
-    return pair?.meta;
+    return {
+        keyName: pair?.meta.keyName as string,
+        isPrimary: pair?.meta.isPrimary as boolean,
+        kid: pair?.meta.kid as string
+    };
 }
 
 export async function retrieveMnemonicForDID(did: string): Promise<string | undefined> {
@@ -188,7 +199,7 @@ export async function retrieveMnemonicForDID(did: string): Promise<string | unde
     if (!privateKey) {
         return undefined;
     }
-    const mnemonic = await convertPrivateKeyToRecovery(privateKey);
+    const mnemonic = await convertPrivateKeyToRecovery(Buffer.from(privateKey).toString('hex'));
     return mnemonic;
 }
 
