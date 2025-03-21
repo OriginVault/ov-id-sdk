@@ -1,5 +1,10 @@
 ## Change Log
 
+## v0.0.13
+- [feat]: Tests `createDIDLinkedExecutable` function.
+- [chore]: Upgrades `@cheqd/did-provider-cheqd` to v4.5.2.
+
+
 ## v0.0.12
  - [fix]: Fixes `privateKeyStore` imports from specific agents.
 

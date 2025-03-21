@@ -19,7 +19,10 @@ const cleanUp = (collectionId?: string) => {
     }
 }
 
-export async function createResource({ data, did, name, version, provider, agent, keyStore, resourceId, resourceType }: { data: any, did: string, name: string, version: string, provider: CheqdDIDProvider, agent: TAgent<IKeyManager & IDIDManager & ICredentialIssuer & ICredentialVerifier & IResolver & IDataStore & ICheqd>, keyStore: MemoryPrivateKeyStore, resourceId?: string, resourceType?: string, }) {    
+export async function createResource({ did, name, version, provider, agent, keyStore, data, filePath, resourceId, resourceType }: { did: string, name: string, version: string, provider: CheqdDIDProvider, agent: TAgent<IKeyManager & IDIDManager & ICredentialIssuer & ICredentialVerifier & IResolver & IDataStore & ICheqd>, keyStore: MemoryPrivateKeyStore, data?: any, filePath?: string, resourceId?: string, resourceType?: string, }) {    
+    if (!filePath && !data) {
+        throw new Error('Either filePath or data must be provided');
+    }
     try {
         const resolvedKeys = await getDIDKeys(did);
 
@@ -39,7 +42,7 @@ export async function createResource({ data, did, name, version, provider, agent
         const resourceUUID = resourceId || uuidv5(fileRelativePath + new Date().toISOString(), uuidv5.URL);
         const privateKey = await keyStore.getKey({ alias: key as string });
 
-        jsonFilePath = await generateResourceFile(collectionId, fileRelativePath, data);
+        jsonFilePath = filePath ? filePath : generateResourceFile(collectionId, fileRelativePath, data);
         // Check if the file exists before reading
         if (!fs.existsSync(jsonFilePath)) {
             throw new Error(`File not found: ${jsonFilePath}`);
@@ -86,7 +89,7 @@ export async function createResource({ data, did, name, version, provider, agent
         
         try {
             const result = await provider.createResource(params, { agent });
-            cleanUp(dirId);
+           !filePath && cleanUp(dirId);
             if (result) {
                 // Return the link to the cheqd resolver
                 return `https://resolver.cheqd.net/1.0/identifiers/${did}/resources/${resourceUUID}`;
@@ -94,13 +97,13 @@ export async function createResource({ data, did, name, version, provider, agent
             
             return undefined;
         } catch (error) {
-            cleanUp(dirId);
+            !filePath && cleanUp(dirId);
             throw `Error creating resource: ${error}`;
         }
     }
     catch (error) {
         console.error("Check data formatting and RPC endpoint connection. Error creating resource:", error);
-        cleanUp(dirId);
+        !filePath && cleanUp(dirId);
         return undefined;
     }
 }

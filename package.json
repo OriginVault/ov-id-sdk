@@ -2,7 +2,7 @@
   "name": "@originvault/ov-id-sdk",
   "did": "did:cheqd:mainnet:280dd37c-aa96-5e71-8548-5125505a968e",
   "testDid": "did:cheqd:testnet:a43b8c59-b0a1-58f7-a0b8-3b5016db93ff",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "organization": "originvault",
   "description": "A TypeScript SDK for managing decentralized identities (DIDs) and verifiable credentials (VCs)",
   "main": "./dist/index.js",
@@ -27,7 +27,9 @@
     "get-mnemonic": "npx tsx scripts/get-mnemonic.js",
     "resolve-did": "npx tsx scripts/resolve-did.js",
     "create-did": "npx tsx scripts/create-did.js",
+    "create-verida-did": "npx tsx scripts/create-verida-did.js",
     "import-did": "npx tsx scripts/import-did.js",
+    "create-did-linked-executable": "npx tsx scripts/create-did-linked-executable.js",
     "pre-publish": "npm run build && npm run sign-release"
   },
   "repository": {
@@ -44,7 +46,7 @@
   ],
   "homepage": "https://www.originvault.box",
   "dependencies": {
-    "@cheqd/did-provider-cheqd": "^4.4.1",
+    "@cheqd/did-provider-cheqd": "^4.5.2",
     "@cosmjs/proto-signing": "^0.33.0",
     "@cosmjs/tendermint-rpc": "^0.33.0",
     "@noble/ed25519": "^2.2.3",
@@ -62,7 +64,8 @@
     "@veramo/did-resolver": "^6.0.0",
     "@veramo/kms-local": "^6.0.0",
     "@veramo/remote-server": "^6.0.0",
-    "@verida/did-client": "^4.4.1",
+    "@verida/did-client": "4.4.2-4.4.2-pr1.0",
+    "@verida/vda-did-resolver": "4.4.2-4.4.2-pr1.0",
     "bip39": "^3.1.0",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.7",

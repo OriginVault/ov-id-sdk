@@ -45,7 +45,8 @@ export function createCheqdProvider(networkType: CheqdNetwork, cosmosPayerSeed: 
  * @param additionalResolvers - Additional resolvers to include.
  * @returns A configured agent instance.
  */
-export function createOVAgent(cheqdProvider: CheqdDIDProvider, universalResolver: any, additionalResolvers: any = {}): IOVAgent {
+export function createOVAgent(cheqdProvider: CheqdDIDProvider, universalResolver: any, additionalResolvers: any = {}, cheqdTestnetProvider?: CheqdDIDProvider): IOVAgent {
+    const testnetProvider = cheqdTestnetProvider ? cheqdTestnetProvider : createCheqdProvider(CheqdNetwork.Testnet, process.env.COSMOS_PAYER_SEED || '', process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
     return createAgent({
         plugins: [
             new KeyManager({
@@ -60,7 +61,7 @@ export function createOVAgent(cheqdProvider: CheqdDIDProvider, universalResolver
                 providers: {
                     'did:cheqd': cheqdProvider,
                     'did:cheqd:mainnet': cheqdProvider,
-                    'did:cheqd:testnet': createCheqdProvider(CheqdNetwork.Testnet, process.env.COSMOS_PAYER_SEED || '', 'https://rpc.cheqd.network'),
+                    'did:cheqd:testnet': testnetProvider,
                     'did:key': new KeyDIDProvider({
                         defaultKms: 'local',
                     }),

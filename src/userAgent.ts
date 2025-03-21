@@ -7,6 +7,7 @@ import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { getResolver } from '@verida/vda-did-resolver';
 import { ensureKeyring } from './storePrivateKeys.js';
 import { convertRecoveryToPrivateKey } from './encryption.js';
 import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
@@ -28,16 +29,7 @@ const veridaDidClient = new DIDClient({
 });
 
 // Custom resolver for did:vda
-const VeridaResolver = {
-    resolve: async (did: string) => {
-        const didDocument = await veridaDidClient.get(did);
-        return {
-            didResolutionMetadata: { contentType: 'application/did+ld+json' },
-            didDocument,
-            didDocumentMetadata: {}
-        };
-    },
-};
+const vdaResolver = getResolver();
 
 let signedVCs: VerifiableCredential[] = [];
 
@@ -77,7 +69,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
 
-    userAgent = createOVAgent(cheqdMainnetProvider, universalResolver, { 'did:vda': VeridaResolver.resolve });
+    userAgent = createOVAgent(cheqdMainnetProvider, universalResolver, vdaResolver);
 
     if(!userAgent) {
         throw new Error("User agent could not be initialized");
