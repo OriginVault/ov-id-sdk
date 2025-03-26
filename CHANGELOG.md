@@ -1,5 +1,9 @@
 ## Change Log
 
+## v0.0.16
+- [fix]: Adds back in 'read-package-json-fast' dependency.
+- [chore]: Upgrades `@veramo/core` to v6-next.
+
 ## v0.0.15  
 - [fix]: Add missing `ignore` dependency.
 - [chore]: Upgrade out of date dependencies.
