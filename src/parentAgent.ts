@@ -1,8 +1,7 @@
 import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
-import { MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
-import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IResolver, IKeyManager, ICredentialPlugin, IDIDManager, TAgent, IIdentifier, IOVAgent } from '@originvault/ov-types';
+import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IIdentifier, IOVAgent } from '@originvault/ov-types';
 import { getParentDIDFromPackageJson, getParentBundlePrivateKey, getParentBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
 import dotenv from 'dotenv';
@@ -12,7 +11,6 @@ import { importDID, listDIDs, getDIDKeys, createDID } from './identityManager.js
 import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
-import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { co2 } from "@tgwf/co2";
 
 dotenv.config();

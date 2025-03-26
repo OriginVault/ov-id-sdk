@@ -1,13 +1,11 @@
 import { VerifiableCredential, IOVAgent } from '@originvault/ov-types';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
-import { DIDClient } from '@verida/did-client';
 import dotenv from 'dotenv';
 import { getDIDKeys, listDIDs, createDID, importDID } from './identityManager.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { getResolver } from '@verida/vda-did-resolver';
 import { ensureKeyring } from './storePrivateKeys.js';
 import { convertRecoveryToPrivateKey } from './encryption.js';
 import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
@@ -23,13 +21,6 @@ export const ensurePrimaryDIDWallet = async () => {
 }
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
-const veridaDidClient = new DIDClient({
-    network: process.env.NODE_ENV === 'development' ? 'local' : 'banksia' as any,
-    rpcUrl: process.env.VDA_RPC_URL || 'https://rpc.verida.net',
-});
-
-// Custom resolver for did:vda
-const vdaResolver = getResolver();
 
 let signedVCs: VerifiableCredential[] = [];
 
@@ -69,7 +60,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
 
-    userAgent = createOVAgent(cheqdMainnetProvider, universalResolver, vdaResolver);
+    userAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
 
     if(!userAgent) {
         throw new Error("User agent could not be initialized");

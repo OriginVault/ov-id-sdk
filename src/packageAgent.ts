@@ -13,8 +13,6 @@ import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { co2 } from "@tgwf/co2";
-import { getResolver } from "@verida/vda-did-resolver";
-import { DIDClient } from '@verida/did-client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +20,6 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
-const vdaResolver = getResolver();
 
 const packageJsonPath = path.join(__dirname, '../package.json');
 
@@ -42,7 +39,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_MAINNET_RPC_URL || 'https://cheqd.originvault.box:443');
     cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_TESTNET_RPC_URL || 'https://rpc.cheqd.network');
-    packageAgent = createOVAgent(cheqdMainnetProvider, universalResolver, vdaResolver, cheqdTestnetProvider);
+    packageAgent = createOVAgent(cheqdMainnetProvider, universalResolver, null, cheqdTestnetProvider);
 
     if(!packageAgent) {
         throw new Error("Package agent could not be initialized");

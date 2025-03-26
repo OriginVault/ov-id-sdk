@@ -1,11 +1,16 @@
 ## Change Log
 
+## v0.0.15  
+- [fix]: Add missing `ignore` dependency.
+- [chore]: Upgrade out of date dependencies.
+- [fix]: Removes `@verida` dependencies.
 
+## v0.0.14
+- [chore]: Upgrades `@cheqd/did-provider-cheqd` to v4.5.2.
+- [chore]: Cleans up dependencies.
 
 ## v0.0.13
-- [feat]: Tests `createDIDLinkedExecutable` function.
-- [chore]: Upgrades `@cheqd/did-provider-cheqd` to v4.5.2.
-
+- [feat]: Adds `createDIDLinkedExecutable` function to the package.
 
 ## v0.0.12
  - [fix]: Fixes `privateKeyStore` imports from specific agents.
