@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import { createDID } from '../src/identityManager.ts';
 import { packageStore } from '../src/packageAgent.ts';
-import { privateKeyStore } from '../src/OVAgent.ts';
 
 dotenv.config();
 
@@ -11,9 +10,8 @@ dotenv.config();
 
     try {
         const { did, mnemonic, credentials } = await createDID({
-            method: 'cheqd:testnet',
+            method: 'key',
             agent,
-            privateKeyStore
         });
         console.log("🔑 DID:", did);
         console.log("🔑 MNEMONIC:", mnemonic);

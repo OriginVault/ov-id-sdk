@@ -1,5 +1,10 @@
 ## Change Log
 
+## v0.0.17
+- [feat]: Adds `cheqdTestnetProvider` to each agent store.
+- [fix]: Fixes `importDID` to use the correct provider.
+- [fix]: Fixes `createDID` to use the correct provider.
+
 ## v0.0.16
 - [fix]: Adds back in 'read-package-json-fast' dependency.
 

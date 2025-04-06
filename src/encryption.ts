@@ -23,10 +23,8 @@ export function decryptPrivateKey(encryptedData: { iv: string, encrypted: string
         const iv = Buffer.from(encryptedData.iv, 'hex');
         const key = crypto.createHash('sha256').update(password).digest();
         const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-
         let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf-8');
         decrypted += decipher.final('utf-8');
-
         return decrypted;
     } catch (error) {
         console.error("❌ Decryption failed");

@@ -63,6 +63,12 @@ export async function getEncryptionKey(): Promise<string> {
     return keyStore.privateEncryptionKey;
 }
 
+export async function storeEncryptionKey(key: string) {
+    await initializeEncryptionKey();
+    keyStore.privateEncryptionKey = key;
+    fs.writeFileSync(keyStore.encryptionKeyFilePath, JSON.stringify({ key }));
+}
+
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
     await initializeEncryptionKey();
@@ -118,8 +124,8 @@ export const getVerifiedAuthentication = async (did: string, agent?: IOVAgent, k
     return verifiedAuthentication;
 }
 
-export const getPublicKeyMultibase = async (did: string): Promise<string | undefined> => {
-    const verifiedAuthentication = await getVerifiedAuthentication(did);
+export const getPublicKeyMultibase = async (did: string, agent?: IOVAgent): Promise<string | undefined> => {
+    const verifiedAuthentication = await getVerifiedAuthentication(did, agent);
     if (!verifiedAuthentication) {
         return undefined;
     }
@@ -312,6 +318,7 @@ export function hexToBase64(hex: string): string {
 // ✅ Ensure the password file exists
 function ensurePasswordFileExists() {
     const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+    console.log("Getting stored password", passwordFilePath);
     if (!fs.existsSync(passwordFilePath)) {
         fs.writeFileSync(passwordFilePath, JSON.stringify("")); // Create an empty password file
     }

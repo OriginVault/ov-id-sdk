@@ -1,6 +1,6 @@
 import { userAgent, ensurePrimaryDIDWallet, PRIMARY_DID_WALLET_FILE } from './userAgent.js';
 import { bases } from 'multiformats/basics';
-import { storePrivateKey } from './storePrivateKeys.js';
+import { storeEncryptionKey, storePrivateKey } from './storePrivateKeys.js';
 import { ed25519 } from '@noble/curves/ed25519';
 import multibase from 'multibase';
 import { v5 as uuidv5 } from 'uuid';
@@ -15,9 +15,16 @@ import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBas
 import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
-import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, ICheqdUpdateIdentifierArgs, DIDDocument } from '@originvault/ov-types';
+import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, DIDDocument } from '@originvault/ov-types';
 import axios from 'axios';
 import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config();
 
 const MULTICODEC_ED25519_HEADER = new Uint8Array([0xed, 0x01]);
 
@@ -34,7 +41,7 @@ function isValidHex(str: string): boolean {
     return /^[0-9a-fA-F]*$/.test(str);
 }
 
-export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean }): Promise<{ did: IIdentifier, mnemonic: string, publicKeyHex: string, privateKeyHex: string, credentials: VerifiableCredential[] }> {
+export async function createDID(props: { method: string, agent?: IOVAgent, alias?: string, isPrimary?: boolean, signingDid?: string }): Promise<{ did: IIdentifier, mnemonic: string, publicKeyHex: string, privateKeyHex: string, credentials: VerifiableCredential[] }> {
     const createAgent = props.agent || parentAgent;
     if(!createAgent) {
         throw new Error("Agent not found");
@@ -43,7 +50,7 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
         const method = props.method || 'cheqd:testnet';
        
         const uuid = uuidv5(Math.random().toString(36).substring(2, 15) + new Date().toISOString(), uuidv5.URL);
-        const didString = props.alias || `did:${method}:${uuid}`;
+        let didString = props.alias || `did:${method}:${uuid}`;
 
         const createdKey = await createAgent.keyManagerCreate({
             type: 'Ed25519',
@@ -62,9 +69,8 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
 
         console.log("🔄 In Progress: Creating DID", didString);
 
-        const did = await createAgent.didManagerCreate({
+        const options: any = {
             provider: `did:${method}`,
-            alias: didString,
             options: {
                 document: {
                     id: didString,
@@ -85,17 +91,23 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
                 }
             }
             
-        });
+        }
 
+        const did = await createAgent.didManagerCreate(method === 'key' ? {
+            provider: `did:key`,
+        } : options);
+
+        console.log("🔄 DID Created", did);
+        didString = did.did;
+
+        console.log("🔄 In Progress: Storing private key", kid);
         const privateKey = await privateKeyStore.getKey({ alias: kid });
-
-        console.log("Saving private key to keyring");
         await storePrivateKey(didString, Buffer.from(privateKey.privateKeyHex, 'hex'), kid);
-
+        let issuer = props.signingDid || didString;
         const credentialId = uuidv5(didString + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
         const credential: DIDAssertionCredential = {
             id: credentialId,
-            issuer: { id: didString },
+            issuer: { id: issuer },
             credentialSubject: {
                 id: didString,
                 assertionType: "did-creation",
@@ -238,7 +250,7 @@ export async function createDIDWithAdmin(props: { method: string, agent: IOVAgen
             }
         }
 
-        console.log("🔄 In Progress: Creating DID", JSON.stringify(createArgs, null, 2));
+        console.log("🔄 In Progress: Creating DID", didString);
 
         const did = await createAgent.didManagerCreate({ options: createArgs });
 
@@ -289,12 +301,6 @@ export async function updateDID(props: { didString: string, agent: IOVAgent,  do
 
         const privateKey = await props.keyStore.getKey({ alias: props.document.verificationMethod[0].id });
         const storedKey = await agent.keyManagerGet({ kid: props.document.verificationMethod[0].id });
-        console.log("🔄 Private key", {
-                        kid: props.document.verificationMethod[0].id,
-                        type: 'Ed25519',
-                        privateKeyHex: privateKey?.privateKeyHex,
-                        publicKeyHex: storedKey?.publicKeyHex,
-                    });
         const privateKeyHex = privateKey?.privateKeyHex || '';
         if (!isValidHex(privateKeyHex)) {
             throw new Error("Invalid privateKeyHex: must be a valid hexadecimal string");
@@ -534,7 +540,11 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
         return false;
     }
     console.log("🔑 Setting primary DID", did);
-    const publicKeyMultibase = await getPublicKeyMultibase(did);
+    if(!userAgent) {
+        console.error("❌ User agent not found");
+        return false;
+    }
+    const publicKeyMultibase = await getPublicKeyMultibase(did, userAgent);
     if (!publicKeyMultibase) return false;
     try {
         const kr = await ensureKeyring();
@@ -697,7 +707,8 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 const encryptedPassword = encryptPrivateKey(password, encryptionKey);
                 // Store the encrypted password in a file
                 fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
-                fs.writeFileSync(passwordFilePath, JSON.stringify(encryptionKey));
+                // Store the encryption key in a file
+                storeEncryptionKey(encryptionKey);
             } else {
                 // Encrypt the password
                 const encryptedPassword = encryptPrivateKey(password, encryptionKey);
@@ -716,7 +727,7 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
     }
 }
 
-export async function verifyPrimaryDID(password: string): Promise<string | boolean | null> {
+export async function verifyPrimaryDID(password: string): Promise<string | false | null> {
     ensurePrimaryDIDWallet();
     try {
         const storedData = fs.readFileSync(PRIMARY_DID_WALLET_FILE, 'utf8');

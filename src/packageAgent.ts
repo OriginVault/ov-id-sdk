@@ -218,6 +218,7 @@ const packageStore: AgentStore = {
     agent: packageAgent,
     keyStore,
     cheqdMainnetProvider,
+    cheqdTestnetProvider,
     listDids: async (provider?: string) => packageAgent ? listDIDs(packageAgent, provider) : [] as IIdentifier[],
     getDID: async (didString: string) => getDIDKeys(didString),
     createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => packageAgent ? createDID({ ...props, agent: packageAgent }) : Promise.reject(new Error("Package agent not initialized")),

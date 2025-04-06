@@ -19,6 +19,7 @@ const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
 const packageJsonPath = path.join(process.cwd(), './package.json');
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let cheqdTestnetProvider: CheqdDIDProvider | null = null;   
 export let parentAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
@@ -32,7 +33,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
     let didMnemonic = didRecoveryPhrase || process.env.PARENT_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
-
+    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
     parentAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
 
     if(!parentAgent) {
@@ -194,7 +195,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
         return result;
     }
 
-    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease };
+    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, privateKeyStore, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const parentStore: AgentStore = {
@@ -202,6 +203,7 @@ const parentStore: AgentStore = {
     agent: parentAgent,
     keyStore,
     cheqdMainnetProvider,
+    cheqdTestnetProvider,
     didKey: currentDIDKey,
     credentials: signedVCs,
     listDids: async (provider?: string) => parentAgent ? listDIDs(parentAgent, provider) : [] as IIdentifier[],

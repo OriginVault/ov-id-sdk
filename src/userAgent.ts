@@ -52,6 +52,7 @@ export async function getPrimaryDID(): Promise<string | null> {
 }
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let cheqdTestnetProvider: CheqdDIDProvider | null = null;
 export let userAgent: IOVAgent | null = null;
 
 const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
@@ -59,6 +60,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
     let didMnemonic = didRecoveryPhrase || process.env.USER_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
+    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.net');
 
     userAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
 
@@ -72,16 +74,16 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: s
         const { credentials } = await importDID({ didString: primaryDID, privateKey: primaryPrivateKey, method: 'cheqd', agent: userAgent });
 
         signedVCs.concat(credentials);
-
     }
 
-    return { agent: userAgent, did: primaryDID || '', key: primaryDID || '', credentials: signedVCs };
+    return { agent: userAgent, did: primaryDID || '', key: primaryDID || '', credentials: signedVCs, privateKeyStore, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const userStore: AgentStore = {
     initialize: initializeAgent,
     agent: userAgent,
     cheqdMainnetProvider,
+    cheqdTestnetProvider,
     privateKeyStore,
     keyStore,
     listDids: (provider?: string) => userAgent ? listDIDs(userAgent, provider) : Promise.reject(new Error("User agent not initialized")),
