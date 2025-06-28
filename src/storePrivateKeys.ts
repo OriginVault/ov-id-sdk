@@ -10,6 +10,7 @@ import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
 import { convertPrivateKeyToRecovery, decryptPrivateKey } from './encryption.js';
 import inquirer from 'inquirer';
 import { IOVAgent, VerifiableCredential } from '@originvault/ov-types';
+import { bases } from 'multiformats/basics';
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ const keyStore = {
     encryptionKeyFilePath: path.join(os.homedir(), '.originvault-encryption-key'),
     privateEncryptionKey: process.env.ENCRYPTION_KEY || 'admin-key',
 }
+
+const MULTICODEC_ED25519_HEADER = new Uint8Array([0xed, 0x01]);
 
 async function initializeEncryptionKey() {
     try {
@@ -124,15 +127,47 @@ export const getVerifiedAuthentication = async (did: string, agent?: IOVAgent, k
     return verifiedAuthentication;
 }
 
+function jwkToMultibase(jwk: { kty?: string; crv?: string; x?: string }) {
+    if (!jwk.kty || !jwk.crv || !jwk.x || jwk.kty !== 'OKP' || jwk.crv !== 'Ed25519') {
+        throw new Error('Only Ed25519 JWK keys are supported');
+    }
+    
+    // Convert base64url to raw bytes
+    const xBytes = Buffer.from(jwk.x, 'base64url');
+    
+    // Create multicodec buffer with Ed25519 prefix
+    const multicodec = new Uint8Array(MULTICODEC_ED25519_HEADER.length + xBytes.length);
+    multicodec.set(MULTICODEC_ED25519_HEADER);
+    multicodec.set(xBytes, MULTICODEC_ED25519_HEADER.length);
+    
+    // Encode with base58btc
+    return bases['base58btc'].encode(multicodec);
+}
+
 export const getPublicKeyMultibase = async (did: string, agent?: IOVAgent): Promise<string | undefined> => {
     const verifiedAuthentication = await getVerifiedAuthentication(did, agent);
     if (!verifiedAuthentication) {
         return undefined;
     }
-    const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
-    return publicKeyMultibase;
-}
 
+    // Handle Ed25519VerificationKey2020 format
+    if (verifiedAuthentication.publicKeyMultibase) {
+        return verifiedAuthentication.publicKeyMultibase;
+    }
+    
+    // Handle JsonWebKey2020 format
+    if (verifiedAuthentication.type === 'JsonWebKey2020' && verifiedAuthentication.publicKeyJwk) {
+        try {
+            return jwkToMultibase(verifiedAuthentication.publicKeyJwk);
+        } catch (error) {
+            console.error('❌ Error converting JWK to multibase:', error);
+            return undefined;
+        }
+    }
+
+    console.error('❌ Unsupported verification method type:', verifiedAuthentication.type);
+    return undefined;
+}
 
 export async function getPrivateKeyForPrimaryDID(password: string) {
     await ensureKeyring();

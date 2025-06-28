@@ -13,7 +13,7 @@ const testnetMnemonic = process.env.TESTNET_MNEMONIC;
         const privateKey = await convertRecoveryToPrivateKey(testnetMnemonic);
         console.log('privateKey', agent);
         const { did, credentials } = await importDID({
-            didString: 'did:cheqd:mainnet:280dd37c-aa96-5e71-8548-5125505a968e',
+            didString: 'did:cheqd:mainnet:d010e359-b819-4d6f-bafd-f00b5620ae91',
             privateKey,
             method: 'cheqd:mainnet',
             agent,

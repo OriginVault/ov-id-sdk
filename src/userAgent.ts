@@ -9,6 +9,7 @@ import os from 'os';
 import { ensureKeyring } from './storePrivateKeys.js';
 import { convertRecoveryToPrivateKey } from './encryption.js';
 import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
+import { DataSource } from 'typeorm';
 
 dotenv.config();
 
@@ -55,14 +56,14 @@ let cheqdMainnetProvider: CheqdDIDProvider | null = null;
 let cheqdTestnetProvider: CheqdDIDProvider | null = null;
 export let userAgent: IOVAgent | null = null;
 
-const initializeAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
+const initializeAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.USER_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
-    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.net');
+    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
 
-    userAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
+    userAgent = createOVAgent({ cheqdProvider: cheqdMainnetProvider, universalResolver, additionalResolvers: {}, cheqdTestnetProvider, dbConnection });
 
     if(!userAgent) {
         throw new Error("User agent could not be initialized");

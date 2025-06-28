@@ -13,6 +13,7 @@ import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { co2 } from "@tgwf/co2";
+import { DataSource } from 'typeorm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,13 +34,13 @@ let publishRelease: (releaseCredential: any, id: string, version: string) => Pro
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
-const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
+const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_MAINNET_RPC_URL || 'https://cheqd.originvault.box:443');
     cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_TESTNET_RPC_URL || 'https://rpc.cheqd.network');
-    packageAgent = createOVAgent(cheqdMainnetProvider, universalResolver, null, cheqdTestnetProvider);
+    packageAgent = createOVAgent({ cheqdProvider: cheqdMainnetProvider, universalResolver, additionalResolvers: {}, cheqdTestnetProvider, dbConnection });
 
     if(!packageAgent) {
         throw new Error("Package agent could not be initialized");
@@ -85,34 +86,21 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
     });
 
     const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
-    const environmentCredentialId = uuidv5(bundle.hash + new Date().toISOString(), uuidv5.URL);
 
-    const environmentCredential: DIDAssertionCredential = {
-        id: environmentCredentialId,
-        issuer: { id: didKey },
-        credentialSubject: {
-            id,
-            assertionType: "environment-metadata",
-            assertionDate: new Date().toISOString(),
-            assertionDetails: environmentMetadata,
-            assertionResult: 'Passed',
-            verificationSteps: [
-                {
-                    step: "Get development environment metadata using read-package-json-fast & process.env",
-                    result: 'Passed',
-                    timestamp: new Date().toISOString()
-                }
-            ]
-        },
-        '@context': ['https://www.w3.org/2018/credentials/v1'],
-        type: ['VerifiableCredential'],
-        expirationDate: new Date().toISOString()
+    const environmentMetadataCredential: DIDAssertionCredential['credentialSubject'] = {
+        id,
+        assertionType: "environment-metadata",
+        assertionDate: new Date().toISOString(),
+        assertionDetails: environmentMetadata,
+        assertionResult: 'Passed',
+        verificationSteps: [
+            {
+                step: "Get development environment metadata using read-package-json-fast & process.env",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            }
+        ]
     };
-
-    const signedEnvironmentVC = await packageAgent.createVerifiableCredential({
-        credential: environmentCredential,
-        proofFormat: 'jwt'
-    });
 
     const credentialId = uuidv5(didKey + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
     const credential: DIDAssertionCredential = {
@@ -126,7 +114,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
             assertionDetails: {
                 bundleHash: bundle.hash,
                 bundleFiles: bundle.files,
-                environmentCredential: signedEnvironmentVC
+                environmentCredential: environmentMetadataCredential
             },
         },
         '@context': ['https://www.w3.org/2018/credentials/v1'],

@@ -18,11 +18,7 @@ import path from 'path';
 import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, DIDDocument } from '@originvault/ov-types';
 import axios from 'axios';
 import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 

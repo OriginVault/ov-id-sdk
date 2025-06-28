@@ -34,8 +34,7 @@ export async function signRelease(agentStore: AgentStore | null) {
     spinner.start();
 
     try {
-        const { agent, did, publishWorkingKey, publishRelease }: {
-            agent: IOVAgent;
+        const { did, publishWorkingKey, publishRelease }: {
             did: string;
             publishWorkingKey: () => Promise<boolean>;
             publishRelease: (metadata: any, name: string, version: string) => Promise<any>;
@@ -55,31 +54,25 @@ export async function signRelease(agentStore: AgentStore | null) {
         const bundleHash = await store.getBundleHash();
 
         const releaseMetadata: CredentialPayload = {
+            name: packageJson.name,
+            version: execSync('npm pkg get version').toString().trim().replace(/"/g, ''),
+            bundleHash: bundleHash,
+            commits: commits,
             id: releaseId,
-            issuer: did,
-            credentialSubject: {
-                name: packageJson.name,
-                version: execSync('npm pkg get version').toString().trim().replace(/"/g, ''),
-                bundleHash: bundleHash,
-                commits: commits
-            },
-            '@context': ['https://www.w3.org/2018/credentials/v1'],
-            type: ['VerifiableCredential'],
-            expirationDate: new Date().toISOString() + '1000000000000',
-            issuanceDate: new Date().toISOString()
+            issuer: did
         };
 
-        const args: ICreateVerifiableCredentialArgs = {
-            credential: releaseMetadata,
-            proofFormat: 'jwt'
-        };
+        // const args: ICreateVerifiableCredentialArgs = {
+        //     credential: releaseMetadata,
+        //     proofFormat: 'jwt'
+        // };
 
-        const co2Emission = new co2();
-        const co2EmissionResult = co2Emission.perByte(JSON.stringify(args).length, false);
+        // const co2Emission = new co2();
+        // const co2EmissionResult = co2Emission.perByte(JSON.stringify(args).length, false);
         
-        console.log(`🌱 ${packageJson.name}@${packageJson.version} - Release Metadata Credential size in carbon grams: ${co2EmissionResult.toFixed(5)}g`);
+        // console.log(`🌱 ${packageJson.name}@${packageJson.version} - Release Metadata Credential size in carbon grams: ${co2EmissionResult.toFixed(5)}g`);
 
-        const signedReleaseMetadata = await agent.createVerifiableCredential(args);
+        // const signedReleaseMetadata = await agent.createVerifiableCredential(args);
 
         let publishedWorkingKey;
 
@@ -93,7 +86,7 @@ export async function signRelease(agentStore: AgentStore | null) {
             throw error;
         }
 
-        const publishedRelease = await publishRelease(signedReleaseMetadata, packageJson.name, packageJson.version);
+        const publishedRelease = await publishRelease(releaseMetadata, packageJson.name, packageJson.version);
         clearInterval(timer);
         spinner.succeed(`✅ Release metadata signatures for ${packageJson.name}@${packageJson.version} published successfully: ${JSON.stringify({
             publishedRelease,

@@ -12,6 +12,7 @@ import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { co2 } from "@tgwf/co2";
+import { DataSource } from 'typeorm';
 
 dotenv.config();
 
@@ -28,13 +29,13 @@ let publishRelease: (releaseCredential: any, name: string, version: string) => P
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
-const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
+const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PARENT_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
     cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
-    parentAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
+    parentAgent = createOVAgent({ cheqdProvider: cheqdMainnetProvider, universalResolver, additionalResolvers: {}, cheqdTestnetProvider, dbConnection });
 
     if(!parentAgent) {
         throw new Error("Parent agent could not be initialized");

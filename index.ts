@@ -12,6 +12,7 @@ import * as ResourceManager from './src/resourceManager.js';
 import * as ParentAgent from './src/parentAgent.js';
 import * as ReleaseManager from './src/releaseManager.js';
 import * as OVAgent from './src/OVAgent.js';
+import * as Verifier from './src/verifier.js';
 
 export * from './src/userAgent.js';
 export * from './src/resolver.js';
@@ -27,6 +28,7 @@ export * from './src/resourceManager.js';
 export * from './src/parentAgent.js';
 export * from './src/releaseManager.js';
 export * from './src/OVAgent.js';
+export * from './src/verifier.js';
 
 export const OvId = {
     agentBase: OVAgent,
@@ -44,5 +46,6 @@ export const OvId = {
     parentAgent: ParentAgent,
     releaseManager: ReleaseManager,
     OVAgent: OVAgent,
+    verifier: Verifier
 }
 

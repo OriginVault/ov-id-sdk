@@ -90,3 +90,19 @@ export async function convertPrivateKeyToRecovery(privateKey: string): Promise<s
         throw error;
     }
 }
+
+export async function convertHexKeyToRecovery(hexKey: string): Promise<string> {
+    try {
+        // Convert from base64
+        const decodedKey = Buffer.from(hexKey, 'hex');
+        console.log("🔑 Decoded key length:", decodedKey.length);
+
+        // Extract the private key (first 32 bytes)
+        const recovery = await convertPrivateKeyToRecovery(decodedKey.toString('base64'));
+
+        return recovery;
+    } catch (error) {
+        console.error("❌ Error converting hex key to recovery phrase:", error);
+        throw error;
+    }
+}

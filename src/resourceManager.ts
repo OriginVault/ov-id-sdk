@@ -92,7 +92,7 @@ export async function createResource({ did, name, version, provider, agent, keyS
            !filePath && cleanUp(dirId);
             if (result) {
                 // Return the link to the cheqd resolver
-                return `https://resolver.cheqd.net/1.0/identifiers/${did}/resources/${resourceUUID}`;
+                return `https://resolver.originvault.box/1.0/identifiers/${did}/resources/${resourceUUID}`;
             }
             
             return undefined;

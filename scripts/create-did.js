@@ -10,7 +10,7 @@ dotenv.config();
 
     try {
         const { did, mnemonic, credentials } = await createDID({
-            method: 'key',
+            method: 'cheqd:mainnet',
             agent,
         });
         console.log("🔑 DID:", did);
