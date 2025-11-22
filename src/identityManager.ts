@@ -9,16 +9,20 @@ import os from 'os';
 import inquirer from 'inquirer';
 import { parentAgent } from './parentAgent.js';
 import { getEnvironmentMetadata } from './environment.js';
-import { MemoryPrivateKeyStore } from '@veramo/key-manager';
-import { privateKeyStore } from './OVAgent.js';
+import { MemoryPrivateKeyStore, MemoryKeyStore } from '@veramo/key-manager';
+import { getKeyForDID } from './OVAgent.js';
 import { getPublicKeyMultibase, getVerifiedAuthentication, base64ToHex, hexToBase64, retrieveKeys, ensureKeyring, getEncryptionKey } from './storePrivateKeys.js';
-import { convertPrivateKeyToRecovery, encryptPrivateKey, decryptPrivateKey } from './encryption.js';
+import { convertPrivateKeyToRecovery, decryptPrivateKeyLegacy, encryptPrivateKeySecure } from './encryption.js';
 import fs from 'fs';
 import path from 'path';
 import { IOVAgent, ICheqdCreateIdentifierArgs, IIdentifier, DIDAssertionCredential, VerifiableCredential, DIDDocument } from '@originvault/ov-types';
 import axios from 'axios';
-import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { KeyringPair$Meta } from '@polkadot/keyring/types';
 import dotenv from 'dotenv';
+import { EnhancedKeyStorage } from './storage/EnhancedKeyStorage.js';
+import { generateKyberKeyPair } from './quantum/quantumEncryption.js';
+import { KeyEntity } from './storage/entities/KeyEntity.js';
+import { Repository } from 'typeorm';
 
 dotenv.config();
 
@@ -97,7 +101,7 @@ export async function createDID(props: { method: string, agent?: IOVAgent, alias
         didString = did.did;
 
         console.log("🔄 In Progress: Storing private key", kid);
-        const privateKey = await privateKeyStore.getKey({ alias: kid });
+        const privateKey = await getKeyForDID(kid);
         await storePrivateKey(didString, Buffer.from(privateKey.privateKeyHex, 'hex'), kid);
         let issuer = props.signingDid || didString;
         const credentialId = uuidv5(didString + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
@@ -167,8 +171,8 @@ export async function createDIDWithAdmin(props: { method: string, agent: IOVAgen
 
         console.log("🔄 In Progress: Creating DID", didString);
 
-        const privateKey = await props.keyStore?.getKey({ alias: kid }) || await privateKeyStore.getKey({ alias: kid });
-        const adminPrivateKey = await props.keyStore?.getKey({ alias: adminKid }) || await privateKeyStore.getKey({ alias: adminKid });
+        const privateKey = await props.keyStore?.getKey({ alias: kid }) || await getKeyForDID(kid);
+        const adminPrivateKey = await props.keyStore?.getKey({ alias: adminKid }) || await getKeyForDID(adminKid);
 
 
         const publisher = await createAgent.resolveDid({ didUrl: publisherDID });
@@ -195,7 +199,7 @@ export async function createDIDWithAdmin(props: { method: string, agent: IOVAgen
                         }
                     ]
                 },
-                keyStore: props.keyStore || privateKeyStore
+                keyStore: props.keyStore || new MemoryPrivateKeyStore()
             });
             console.log("🔄 In Progress: Updated publisher DID", updatedPublisher);
         } catch (error) {
@@ -641,9 +645,9 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
             const privateKeyBuffer = Uint8Array.from(Buffer.from(privateKey, 'base64'));
             await storePrivateKey(did, privateKeyBuffer, "default");
             // ✅ Encrypt and store the private key
-            const encryptedPrivateKey = encryptPrivateKey(privateKey, password);
+            const encryptedPrivateKey = await encryptPrivateKeySecure(privateKey, password);
 
-            const packageJsonPath = path.join(__dirname, '../package.json');
+            const packageJsonPath = path.join(process.cwd(), 'package.json');
             const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
 
             const environmentCredential: DIDAssertionCredential = {
@@ -680,6 +684,16 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 meta: { did, isPrimary: true, didCredential: signedImport, environmentCredential: signedEnvironmentVC },
             };
 
+            // Check if the file exists and is actually a file before writing
+            if (fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
+                const stat = fs.statSync(PRIMARY_DID_WALLET_FILE);
+                if (stat.isDirectory()) {
+                    console.error("❌ Error: .originvault-primary-did-wallet.json is a directory, not a file");
+                    console.error("Removing the directory to fix this issue...");
+                    fs.rmdirSync(PRIMARY_DID_WALLET_FILE);
+                }
+            }
+
             fs.writeFileSync(PRIMARY_DID_WALLET_FILE, JSON.stringify(storedKeys, null, 2));
             
             const encryptionKey = await getEncryptionKey();
@@ -700,14 +714,14 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
                 }
 
                  // Encrypt the password
-                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                const encryptedPassword = await encryptPrivateKeySecure(password, encryptionKey);
                 // Store the encrypted password in a file
                 fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
                 // Store the encryption key in a file
                 storeEncryptionKey(encryptionKey);
             } else {
                 // Encrypt the password
-                const encryptedPassword = encryptPrivateKey(password, encryptionKey);
+                const encryptedPassword = await encryptPrivateKeySecure(password, encryptionKey);
                 // Store the encrypted password in a file
                 fs.writeFileSync(passwordFilePath, JSON.stringify(encryptedPassword));
             }
@@ -726,12 +740,23 @@ export async function setPrimaryDID(did: string, privateKey: string, password: s
 export async function verifyPrimaryDID(password: string): Promise<string | false | null> {
     ensurePrimaryDIDWallet();
     try {
+        // Check if the file exists and is actually a file before reading
+        if (fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
+            const stat = fs.statSync(PRIMARY_DID_WALLET_FILE);
+            if (stat.isDirectory()) {
+                console.error("❌ Error: .originvault-primary-did-wallet.json is a directory, not a file");
+                console.error("Removing the directory to fix this issue...");
+                fs.rmdirSync(PRIMARY_DID_WALLET_FILE);
+                return false;
+            }
+        }
+        
         const storedData = fs.readFileSync(PRIMARY_DID_WALLET_FILE, 'utf8');
         const { encryptedPrivateKey, meta } = JSON.parse(storedData);
         if(!encryptedPrivateKey) return false;
         
         const did: string = meta.did;
-        const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
+        const privateKey = await decryptPrivateKeyLegacy(encryptedPrivateKey, password);
         if (!privateKey) {
             console.error("❌ Failed to decrypt private key");
             return false;
@@ -775,3 +800,101 @@ export async function verifyPrimaryDID(password: string): Promise<string | false
         return false;
     }
 }
+
+// Quantum key management functions
+export class QuantumKeyManager {
+  private enhancedKeyStorage: EnhancedKeyStorage;
+
+  constructor(encryptionKey: string, keyRepository: Repository<KeyEntity>) {
+    this.enhancedKeyStorage = new EnhancedKeyStorage(encryptionKey, keyRepository);
+  }
+
+  /**
+   * Generate and store quantum keys for a DID
+   */
+  async generateQuantumKeys(did: string): Promise<{ publicKey: string; keyId: string }> {
+    const { publicKey, privateKey } = await generateKyberKeyPair();
+    const keyId = `kyber-${Date.now()}`;
+
+    // Encrypt the private key
+    const encryptedPrivateKey = await this.enhancedKeyStorage.encryptKey(privateKey);
+
+    // Store the key
+    await this.enhancedKeyStorage.storeKey(did, {
+      keyId,
+      algorithm: 'Kyber768',
+      keyType: 'quantum',
+      publicKeyHex: publicKey,
+      encryptedPrivateKey,
+      metadata: {
+        purpose: 'quantum-safe-encryption',
+        generatedAt: new Date().toISOString()
+      }
+    });
+
+    return { publicKey, keyId };
+  }
+
+  /**
+   * Get quantum public key for a DID
+   */
+  async getQuantumPublicKey(did: string): Promise<string | null> {
+    const key = await this.enhancedKeyStorage.retrieveKey(did, 'kyber');
+    return key?.publicKeyHex || null;
+  }
+
+  /**
+   * Get quantum private key for a DID
+   */
+  async getQuantumPrivateKey(did: string): Promise<string | null> {
+    return await this.enhancedKeyStorage.getDecryptedPrivateKey(did, 'kyber');
+  }
+
+  /**
+   * List all quantum keys for a DID
+   */
+  async listQuantumKeys(did: string): Promise<any[]> {
+    const allKeys = await this.enhancedKeyStorage.listKeys(did);
+    return allKeys.filter(key => key.keyType === 'quantum');
+  }
+}
+
+// Standalone quantum key functions for backward compatibility
+export async function generateQuantumKeysForDID(
+  did: string, 
+  encryptionKey: string, 
+  keyRepository: Repository<KeyEntity>
+): Promise<{ publicKey: string; keyId: string }> {
+  const manager = new QuantumKeyManager(encryptionKey, keyRepository);
+  return await manager.generateQuantumKeys(did);
+}
+
+export async function getQuantumPublicKeyForDID(
+  did: string,
+  encryptionKey: string,
+  keyRepository: Repository<KeyEntity>
+): Promise<string | null> {
+  const manager = new QuantumKeyManager(encryptionKey, keyRepository);
+  return await manager.getQuantumPublicKey(did);
+}
+
+export async function getQuantumPrivateKeyForDID(
+  did: string,
+  encryptionKey: string,
+  keyRepository: Repository<KeyEntity>
+): Promise<string | null> {
+  const manager = new QuantumKeyManager(encryptionKey, keyRepository);
+  return await manager.getQuantumPrivateKey(did);
+}
+
+
+
+
+
+
+
+
+
+
+
+

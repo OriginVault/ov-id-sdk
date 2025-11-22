@@ -1,4 +1,4 @@
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, getPrivateKeyStore, AgentStore } from './OVAgent.js';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IIdentifier, IOVAgent } from '@originvault/ov-types';
@@ -149,7 +149,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase, dbConnectio
                 name: `${parentDIDString}-keys`,
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: parentAgent,
-                keyStore: privateKeyStore,
                 resourceId: uuidv5(id, uuidv5.URL),
                 resourceType: 'Working-Directory-Derived-Key',
                 version: credentialId
@@ -185,7 +184,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase, dbConnectio
             version,
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: parentAgent,
-            keyStore: privateKeyStore,
             resourceType: 'NPM-Package-Publish-Event',
         });
 
@@ -196,7 +194,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase, dbConnectio
         return result;
     }
 
-    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, privateKeyStore, cheqdTestnetProvider, cheqdMainnetProvider };
+    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const parentStore: AgentStore = {

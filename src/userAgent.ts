@@ -8,7 +8,7 @@ import path from 'path';
 import os from 'os';
 import { ensureKeyring } from './storePrivateKeys.js';
 import { convertRecoveryToPrivateKey } from './encryption.js';
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, getPrivateKeyStore, AgentStore } from './OVAgent.js';
 import { DataSource } from 'typeorm';
 
 dotenv.config();
@@ -16,9 +16,21 @@ dotenv.config();
 export const PRIMARY_DID_WALLET_FILE = path.resolve(os.homedir(), '.originvault-primary-did-wallet.json');
 
 export const ensurePrimaryDIDWallet = async () => {
-    if (!fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
-        fs.writeFileSync(PRIMARY_DID_WALLET_FILE, JSON.stringify({}, null, 2));
+    // Check if the path exists and what type it is
+    if (fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
+        const stat = fs.statSync(PRIMARY_DID_WALLET_FILE);
+        if (stat.isDirectory()) {
+            console.error("❌ Error: .originvault-primary-did-wallet.json is a directory, not a file");
+            console.error("Removing the directory to fix this issue...");
+            fs.rmdirSync(PRIMARY_DID_WALLET_FILE);
+        } else if (stat.isFile()) {
+            // It's already a file, no need to create it
+            return;
+        }
     }
+    
+    // File doesn't exist or was a directory that we removed
+    fs.writeFileSync(PRIMARY_DID_WALLET_FILE, JSON.stringify({}, null, 2));
 }
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
@@ -36,6 +48,17 @@ export async function getPrimaryDID(): Promise<string | null> {
         if(did) return did;
         
         try {
+            // Check if the file exists and is actually a file
+            if (fs.existsSync(PRIMARY_DID_WALLET_FILE)) {
+                const stat = fs.statSync(PRIMARY_DID_WALLET_FILE);
+                if (stat.isDirectory()) {
+                    console.error("❌ Error: .originvault-primary-did-wallet.json is a directory, not a file");
+                    console.error("Removing the directory to fix this issue...");
+                    fs.rmdirSync(PRIMARY_DID_WALLET_FILE);
+                    return null;
+                }
+            }
+            
             const storedData = fs.readFileSync(PRIMARY_DID_WALLET_FILE, 'utf8');
             const { meta } = JSON.parse(storedData);
             if(!meta) return null;
@@ -77,7 +100,7 @@ const initializeAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: {
         signedVCs.concat(credentials);
     }
 
-    return { agent: userAgent, did: primaryDID || '', key: primaryDID || '', credentials: signedVCs, privateKeyStore, cheqdTestnetProvider, cheqdMainnetProvider };
+    return { agent: userAgent, did: primaryDID || '', key: primaryDID || '', credentials: signedVCs, privateKeyStore: getPrivateKeyStore(), cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const userStore: AgentStore = {
@@ -85,7 +108,7 @@ const userStore: AgentStore = {
     agent: userAgent,
     cheqdMainnetProvider,
     cheqdTestnetProvider,
-    privateKeyStore,
+    privateKeyStore: getPrivateKeyStore(),
     keyStore,
     listDids: (provider?: string) => userAgent ? listDIDs(userAgent, provider) : Promise.reject(new Error("User agent not initialized")),
     getDID: (didString: string) => userAgent ? getDIDKeys(didString) : Promise.reject(new Error("User agent not initialized")),

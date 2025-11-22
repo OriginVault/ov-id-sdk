@@ -6,23 +6,72 @@ import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-m
 import { CredentialPlugin, W3cMessageHandler } from '@veramo/credential-w3c';
 import { KeyManagementSystem } from '@veramo/kms-local';
 import { DIDResolverPlugin } from '@veramo/did-resolver';
+import { PeerDIDProvider, getResolver as getPeerResolver } from '@veramo/did-provider-peer';
 import { KeyDIDProvider } from '@veramo/did-provider-key';
 import { CheqdDIDProvider, CheqdDidResolver } from '@cheqd/did-provider-cheqd';
 import { Resolver } from 'did-resolver';
 import dotenv from 'dotenv';
 import { IOVAgent, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
-import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
+import { KeyringPair$Meta } from '@polkadot/keyring/types';
 import { DataSource } from 'typeorm';
-import { KeyStore } from '@veramo/data-store';
+import { KeyStore, PrivateKeyStore } from '@veramo/data-store';
+import { initializePrivateKeyDatabase } from './database-config.js';
 
 dotenv.config();
 
 export let keyStore: KeyStore | MemoryKeyStore = new MemoryKeyStore();
-export const privateKeyStore = new MemoryPrivateKeyStore();
+// Private key store - supports both memory and database storage for security
+let privateKeyStore: MemoryPrivateKeyStore | PrivateKeyStore = new MemoryPrivateKeyStore();
+
+// Internal function - for SDK internal use only
+export function getPrivateKeyStore(): MemoryPrivateKeyStore | PrivateKeyStore {
+    return privateKeyStore;
+}
+
+// Controlled key operations - only expose specific operations, not the entire store
+export async function getKeyForDID(alias: string): Promise<any> {
+    try {
+        return await privateKeyStore.getKey({ alias });
+    } catch (error) {
+        console.error('❌ Error retrieving key for DID:', error);
+        throw new Error('Key retrieval failed');
+    }
+}
+
+export async function storeKeyForDID(alias: string, privateKeyHex: string): Promise<void> {
+    try {
+        await privateKeyStore.importKey({ alias, privateKeyHex, type: 'Ed25519' });
+    } catch (error) {
+        console.error('❌ Error storing key for DID:', error);
+        throw new Error('Key storage failed');
+    }
+}
 
 export enum CheqdNetwork {
     Mainnet = "mainnet",
     Testnet = "testnet"
+}
+
+/**
+ * Initialize private key storage with optional database connection
+ * This provides a secure, persistent alternative to in-memory storage
+ */
+export async function initializePrivateKeyStorage(): Promise<DataSource | null> {
+    try {
+        const dbConnection = await initializePrivateKeyDatabase();
+        
+        if (dbConnection) {
+            // Update the global stores to use database storage
+            keyStore = new KeyStore(dbConnection);
+            privateKeyStore = new PrivateKeyStore(dbConnection);
+            console.log('🔒 Private key storage initialized with database encryption');
+        }
+        
+        return dbConnection;
+    } catch (error) {
+        console.error('❌ Failed to initialize private key storage:', error);
+        return null;
+    }
 }
 
 /**
@@ -53,8 +102,14 @@ export function createCheqdProvider(networkType: CheqdNetwork, cosmosPayerSeed: 
  */
 export function createOVAgent({ cheqdProvider, universalResolver, additionalResolvers = {}, cheqdTestnetProvider, dbConnection }: { cheqdProvider: CheqdDIDProvider, universalResolver: any, additionalResolvers?: any, cheqdTestnetProvider?: CheqdDIDProvider, dbConnection?: DataSource }): IOVAgent {
     const testnetProvider = cheqdTestnetProvider ? cheqdTestnetProvider : createCheqdProvider(CheqdNetwork.Testnet, process.env.COSMOS_PAYER_SEED || '', process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
+    
+    // Configure persistent storage if database connection is provided
     if (dbConnection) {
         keyStore = new KeyStore(dbConnection);
+        privateKeyStore = new PrivateKeyStore(dbConnection);
+        console.log('🔒 Using database storage for private keys with encryption');
+    } else {
+        console.log('⚠️  Using in-memory storage for private keys (not recommended for production)');
     }
     return createAgent({
         plugins: [
@@ -74,12 +129,16 @@ export function createOVAgent({ cheqdProvider, universalResolver, additionalReso
                     'did:key': new KeyDIDProvider({
                         defaultKms: 'local',
                     }),
+                    'did:peer': new PeerDIDProvider({
+                        defaultKms: 'local',
+                    }),
                 }
             }),
             new DIDResolverPlugin({
                 resolver: new Resolver({
                     ...universalResolver,
                     ...additionalResolvers,
+                    ...getPeerResolver(),
                     'did:cheqd:mainnet': new CheqdDidResolver({
                          url: 'https://resolver.originvault.box/1.0/identifiers/'
                     })
@@ -100,12 +159,14 @@ export function createOVAgent({ cheqdProvider, universalResolver, additionalReso
 
 /**
  * Interface for the AgentStore.
+ * Note: privateKeyStore is no longer exposed for security reasons.
  */
 export interface AgentStore {
-    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey?: (() => Promise<string | undefined>) | null, publishRelease?: (releaseCredential: any, name: string, version: string) => Promise<string | undefined> }>,
+    initialize: (args: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource }) => Promise<{ agent: IOVAgent, did: string, key: string, credentials: VerifiableCredential[], publishWorkingKey?: (() => Promise<string | undefined>) | null, publishRelease?: (releaseCredential: any, name: string, version: string) => Promise<string | undefined>, cheqdTestnetProvider: CheqdDIDProvider | null, cheqdMainnetProvider: CheqdDIDProvider | null }>,
     agent: IOVAgent | null,
     keyStore: MemoryKeyStore | KeyStore,
     cheqdMainnetProvider: CheqdDIDProvider | null,
+    cheqdTestnetProvider: CheqdDIDProvider | null,
     listDids: (provider?: string) => Promise<IIdentifier[]>,
     getDID: (didString: string) => Promise<KeyringPair$Meta | undefined>,
     createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => Promise<{ did: IIdentifier, mnemonic: string, credentials: VerifiableCredential[] }>,

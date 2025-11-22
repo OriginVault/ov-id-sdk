@@ -5,8 +5,8 @@ import ignore from 'ignore'; // npm install ignore
 import tar from 'tar-stream'; // npm install tar-stream
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const packageManagerFilename = fileURLToPath(import.meta.url);
+const packageManagerDirname = path.dirname(packageManagerFilename);
 
 function getIgnoreFilter(packagePath: string) {
     const npmIgnoreFile = path.join(packagePath, ".npmignore");
@@ -137,7 +137,7 @@ async function getPrivateKeyFromBundle(packagePath: string): Promise<Uint8Array>
 }
 
 async function getSelfBundleHash(): Promise<{ hash: string, files: string[] }> {
-    const packagePath = path.resolve(__dirname, '..');
+    const packagePath = path.resolve(packageManagerDirname, '..');
     const bundleHash = await createBundleHash(`${packagePath}`);
     return bundleHash;
 }
@@ -148,7 +148,7 @@ async function getSelfBundlePrivateKey(): Promise<{ key: Uint8Array, hash: strin
 }
 
 async function getPackageDIDFromPackageJson(): Promise<string> {
-    const packageJsonPath = path.join(__dirname, '..', 'package.json');
+    const packageJsonPath = path.join(packageManagerDirname, '..', 'package.json');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     return packageJson.did;
 }

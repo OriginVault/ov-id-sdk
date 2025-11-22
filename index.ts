@@ -13,6 +13,11 @@ import * as ParentAgent from './src/parentAgent.js';
 import * as ReleaseManager from './src/releaseManager.js';
 import * as OVAgent from './src/OVAgent.js';
 import * as Verifier from './src/verifier.js';
+import * as DIDComm from './src/didcomm/index.js';
+import * as AESRSAEncryption from './src/aesRsaEncryption.js';
+import * as Security from './src/security/index.js';
+import * as SecurityBridge from './src/shared/security-bridge.service.js';
+import * as SecureDIDComm from './src/didcomm/secure-didcomm-client.js';
 
 export * from './src/userAgent.js';
 export * from './src/resolver.js';
@@ -28,7 +33,13 @@ export * from './src/resourceManager.js';
 export * from './src/parentAgent.js';
 export * from './src/releaseManager.js';
 export * from './src/OVAgent.js';
+export * from './src/database-config.js';
 export * from './src/verifier.js';
+export * from './src/didcomm/index.js';
+export * from './src/aesRsaEncryption.js';
+export * from './src/security/index.js';
+export * from './src/shared/security-bridge.service.js';
+export * from './src/didcomm/secure-didcomm-client.js';
 
 export const OvId = {
     agentBase: OVAgent,
@@ -46,6 +57,11 @@ export const OvId = {
     parentAgent: ParentAgent,
     releaseManager: ReleaseManager,
     OVAgent: OVAgent,
-    verifier: Verifier
+    verifier: Verifier,
+    didComm: DIDComm,
+    aesRsaEncryption: AESRSAEncryption,
+    security: Security,
+    securityBridge: SecurityBridge,
+    secureDIDComm: SecureDIDComm
 }
 

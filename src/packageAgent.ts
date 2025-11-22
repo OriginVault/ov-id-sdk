@@ -1,4 +1,4 @@
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent.js';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, AgentStore } from './OVAgent.js';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { IOVAgent, ICreateVerifiableCredentialArgs, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
@@ -15,14 +15,14 @@ import { fileURLToPath } from 'url';
 import { co2 } from "@tgwf/co2";
 import { DataSource } from 'typeorm';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const packageAgentFilename = fileURLToPath(import.meta.url);
+const packageAgentDirname = path.dirname(packageAgentFilename);
 
 dotenv.config();
 
 const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
 
-const packageJsonPath = path.join(__dirname, '../package.json');
+const packageJsonPath = path.join(packageAgentDirname, '../package.json');
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
 let cheqdTestnetProvider: CheqdDIDProvider | null = null;
@@ -146,7 +146,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase, dbConnecti
                 name: `${packageJsonDIDString}-keys`,
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: packageAgent,
-                keyStore: privateKeyStore,
                 resourceId: uuidv5(id, uuidv5.URL),
                 resourceType: 'Working-Directory-Derived-Key',
                 version: credentialId
@@ -186,7 +185,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase, dbConnecti
             name,
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: packageAgent,
-            keyStore: privateKeyStore,
             resourceType: 'NPM-Package-Publish-Event',
             version
         });
@@ -198,7 +196,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase, dbConnecti
         return result;
     }
 
-    return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, privateKeyStore, cheqdTestnetProvider, cheqdMainnetProvider };
+    return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const packageStore: AgentStore = {
@@ -216,8 +214,7 @@ const packageStore: AgentStore = {
     publishWorkingKey,
     publishRelease,
     didKey: currentDIDKey,
-    packageJsonPath,
-    privateKeyStore
+    packageJsonPath
 }
 
 export { packageStore };
