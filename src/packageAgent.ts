@@ -1,4 +1,4 @@
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, AgentStore } from './OVAgent.js';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
 import { IOVAgent, ICreateVerifiableCredentialArgs, ManagedKeyInfo, DIDAssertionCredential, VerifiableCredential, IIdentifier } from '@originvault/ov-types';
@@ -13,19 +13,19 @@ import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { co2 } from "@tgwf/co2";
-import { getResolver } from "@verida/vda-did-resolver";
+import { DataSource } from 'typeorm';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const packageAgentFilename = fileURLToPath(import.meta.url);
+const packageAgentDirname = path.dirname(packageAgentFilename);
 
 dotenv.config();
 
-const universalResolver = getUniversalResolverFor(['cheqd', 'key', 'vda']);
-const vdaResolver = getResolver();
+const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
 
-const packageJsonPath = path.join(__dirname, '../package.json');
+const packageJsonPath = path.join(packageAgentDirname, '../package.json');
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let cheqdTestnetProvider: CheqdDIDProvider | null = null;
 let packageAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
@@ -34,13 +34,13 @@ let publishRelease: (releaseCredential: any, id: string, version: string) => Pro
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
-const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
+const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PACKAGE_DID_RECOVERY_PHRASE || '';
 
-    cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
-
-    packageAgent = createOVAgent(cheqdMainnetProvider, universalResolver, vdaResolver);
+    cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_MAINNET_RPC_URL || 'https://cheqd.originvault.box:443');
+    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_TESTNET_RPC_URL || 'https://rpc.cheqd.network');
+    packageAgent = createOVAgent({ cheqdProvider: cheqdMainnetProvider, universalResolver, additionalResolvers: {}, cheqdTestnetProvider, dbConnection });
 
     if(!packageAgent) {
         throw new Error("Package agent could not be initialized");
@@ -86,34 +86,21 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
     });
 
     const environmentMetadata = await getEnvironmentMetadata(packageJsonPath);
-    const environmentCredentialId = uuidv5(bundle.hash + new Date().toISOString(), uuidv5.URL);
 
-    const environmentCredential: DIDAssertionCredential = {
-        id: environmentCredentialId,
-        issuer: { id: didKey },
-        credentialSubject: {
-            id,
-            assertionType: "environment-metadata",
-            assertionDate: new Date().toISOString(),
-            assertionDetails: environmentMetadata,
-            assertionResult: 'Passed',
-            verificationSteps: [
-                {
-                    step: "Get development environment metadata using read-package-json-fast & process.env",
-                    result: 'Passed',
-                    timestamp: new Date().toISOString()
-                }
-            ]
-        },
-        '@context': ['https://www.w3.org/2018/credentials/v1'],
-        type: ['VerifiableCredential'],
-        expirationDate: new Date().toISOString()
+    const environmentMetadataCredential: DIDAssertionCredential['credentialSubject'] = {
+        id,
+        assertionType: "environment-metadata",
+        assertionDate: new Date().toISOString(),
+        assertionDetails: environmentMetadata,
+        assertionResult: 'Passed',
+        verificationSteps: [
+            {
+                step: "Get development environment metadata using read-package-json-fast & process.env",
+                result: 'Passed',
+                timestamp: new Date().toISOString()
+            }
+        ]
     };
-
-    const signedEnvironmentVC = await packageAgent.createVerifiableCredential({
-        credential: environmentCredential,
-        proofFormat: 'jwt'
-    });
 
     const credentialId = uuidv5(didKey + new Date().toISOString(), uuidv5.URL); // Generate a UUID from the did
     const credential: DIDAssertionCredential = {
@@ -127,7 +114,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
             assertionDetails: {
                 bundleHash: bundle.hash,
                 bundleFiles: bundle.files,
-                environmentCredential: signedEnvironmentVC
+                environmentCredential: environmentMetadataCredential
             },
         },
         '@context': ['https://www.w3.org/2018/credentials/v1'],
@@ -159,7 +146,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
                 name: `${packageJsonDIDString}-keys`,
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: packageAgent,
-                keyStore: privateKeyStore,
                 resourceId: uuidv5(id, uuidv5.URL),
                 resourceType: 'Working-Directory-Derived-Key',
                 version: credentialId
@@ -199,7 +185,6 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
             name,
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: packageAgent,
-            keyStore: privateKeyStore,
             resourceType: 'NPM-Package-Publish-Event',
             version
         });
@@ -211,7 +196,7 @@ const initializePackageAgent = async ({ payerSeed, didRecoveryPhrase }: { payerS
         return result;
     }
 
-    return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, privateKeyStore };
+    return { agent: packageAgent, did: packageJsonDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const packageStore: AgentStore = {
@@ -219,6 +204,7 @@ const packageStore: AgentStore = {
     agent: packageAgent,
     keyStore,
     cheqdMainnetProvider,
+    cheqdTestnetProvider,
     listDids: async (provider?: string) => packageAgent ? listDIDs(packageAgent, provider) : [] as IIdentifier[],
     getDID: async (didString: string) => getDIDKeys(didString),
     createDID: (props: { method: string, alias: string, isPrimary?: boolean }) => packageAgent ? createDID({ ...props, agent: packageAgent }) : Promise.reject(new Error("Package agent not initialized")),
@@ -228,8 +214,7 @@ const packageStore: AgentStore = {
     publishWorkingKey,
     publishRelease,
     didKey: currentDIDKey,
-    packageJsonPath,
-    privateKeyStore
+    packageJsonPath
 }
 
 export { packageStore };

@@ -1,8 +1,7 @@
-import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, privateKeyStore, AgentStore } from './OVAgent';
-import { MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager';
+import { createOVAgent, createCheqdProvider, CheqdNetwork, keyStore, getPrivateKeyStore, AgentStore } from './OVAgent.js';
 import { getUniversalResolverFor } from '@veramo/did-resolver';
 import { CheqdDIDProvider } from '@cheqd/did-provider-cheqd';
-import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IResolver, IKeyManager, ICredentialPlugin, IDIDManager, TAgent, IIdentifier, IOVAgent } from '@originvault/ov-types';
+import { ICreateVerifiableCredentialArgs, DIDAssertionCredential, VerifiableCredential, IIdentifier, IOVAgent } from '@originvault/ov-types';
 import { getParentDIDFromPackageJson, getParentBundlePrivateKey, getParentBundleHash } from './packageManager.js';
 import { generateDIDKey } from './didKey.js';
 import dotenv from 'dotenv';
@@ -12,8 +11,8 @@ import { importDID, listDIDs, getDIDKeys, createDID } from './identityManager.js
 import { createResource } from './resourceManager.js';
 import { getEnvironmentMetadata } from './environment.js';
 import path from 'path';
-import { KeyringPair$Meta } from '@polkadot/keyring/types.js';
 import { co2 } from "@tgwf/co2";
+import { DataSource } from 'typeorm';
 
 dotenv.config();
 
@@ -21,6 +20,7 @@ const universalResolver = getUniversalResolverFor(['cheqd', 'key']);
 const packageJsonPath = path.join(process.cwd(), './package.json');
 
 let cheqdMainnetProvider: CheqdDIDProvider | null = null;
+let cheqdTestnetProvider: CheqdDIDProvider | null = null;   
 export let parentAgent: IOVAgent | null = null;
 let currentDIDKey: string | null = null;
 let signedVCs: VerifiableCredential[] = [];
@@ -29,13 +29,13 @@ let publishRelease: (releaseCredential: any, name: string, version: string) => P
     return Promise.reject(new Error("publishRelease not initialized"));
 };
 
-const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSeed?: string, didRecoveryPhrase?: string } = {}) => {
+const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase, dbConnection }: { payerSeed?: string, didRecoveryPhrase?: string, dbConnection?: DataSource } = {}) => {
     let cosmosPayerSeed = payerSeed || process.env.COSMOS_PAYER_SEED || '';
     let didMnemonic = didRecoveryPhrase || process.env.PARENT_DID_RECOVERY_PHRASE || '';
 
     cheqdMainnetProvider = createCheqdProvider(CheqdNetwork.Mainnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://cheqd.originvault.box:443');
-
-    parentAgent = createOVAgent(cheqdMainnetProvider, universalResolver);
+    cheqdTestnetProvider = createCheqdProvider(CheqdNetwork.Testnet, cosmosPayerSeed, process.env.CHEQD_RPC_URL || 'https://rpc.cheqd.network');
+    parentAgent = createOVAgent({ cheqdProvider: cheqdMainnetProvider, universalResolver, additionalResolvers: {}, cheqdTestnetProvider, dbConnection });
 
     if(!parentAgent) {
         throw new Error("Parent agent could not be initialized");
@@ -149,7 +149,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
                 name: `${parentDIDString}-keys`,
                 provider: cheqdMainnetProvider as CheqdDIDProvider,
                 agent: parentAgent,
-                keyStore: privateKeyStore,
                 resourceId: uuidv5(id, uuidv5.URL),
                 resourceType: 'Working-Directory-Derived-Key',
                 version: credentialId
@@ -185,7 +184,6 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
             version,
             provider: cheqdMainnetProvider as CheqdDIDProvider,
             agent: parentAgent,
-            keyStore: privateKeyStore,
             resourceType: 'NPM-Package-Publish-Event',
         });
 
@@ -196,7 +194,7 @@ const initializeParentAgent = async ({ payerSeed, didRecoveryPhrase }: { payerSe
         return result;
     }
 
-    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease };
+    return { agent: parentAgent, did: parentDIDString, key: currentDIDKey, credentials: signedVCs, publishWorkingKey, publishRelease, cheqdTestnetProvider, cheqdMainnetProvider };
 }
 
 const parentStore: AgentStore = {
@@ -204,6 +202,7 @@ const parentStore: AgentStore = {
     agent: parentAgent,
     keyStore,
     cheqdMainnetProvider,
+    cheqdTestnetProvider,
     didKey: currentDIDKey,
     credentials: signedVCs,
     listDids: async (provider?: string) => parentAgent ? listDIDs(parentAgent, provider) : [] as IIdentifier[],

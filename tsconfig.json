@@ -5,8 +5,8 @@
     "jsx": "react-jsx",
     "baseUrl": "./src",
     "outDir": "./dist",
-    "sourceMap": true,
-    "incremental": true,
+    "sourceMap": false,
+    "incremental": false,
     "lib": [
       "dom",
       "dom.iterable",
@@ -20,10 +20,13 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "module": "ES2020",
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "maxNodeModuleJsDepth": 0,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "exclude": ["node_modules", "lib", "server.js"]
 }

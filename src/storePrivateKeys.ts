@@ -7,9 +7,11 @@ import { sha512 } from '@noble/hashes/sha2'; // Ensure correct import
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { DIDResolutionResult, VerificationMethod } from 'did-resolver';
-import { convertPrivateKeyToRecovery, decryptPrivateKey } from './encryption.js';
+import { convertPrivateKeyToRecovery, decryptPrivateKeyLegacy } from './encryption.js';
+import { SecureKeyStorage } from './security/secure-key-storage.js';
 import inquirer from 'inquirer';
 import { IOVAgent, VerifiableCredential } from '@originvault/ov-types';
+import { base58btc } from 'multiformats/bases/base58';
 
 dotenv.config();
 
@@ -27,31 +29,49 @@ const keyStore = {
     privateEncryptionKey: process.env.ENCRYPTION_KEY || 'admin-key',
 }
 
+const MULTICODEC_ED25519_HEADER = new Uint8Array([0xed, 0x01]);
+
 async function initializeEncryptionKey() {
     try {
         const keyPath = path.join(os.homedir(), '.originvault-encryption-key');
-        if (!fs.existsSync(keyPath)) {
-            if(process.env.ENCRYPTION_KEY) {
-                keyStore.privateEncryptionKey = process.env.ENCRYPTION_KEY;
-                keyStore.encryptionKeyFilePath = keyPath;
+        
+        // Check if the path exists and what type it is
+        if (fs.existsSync(keyPath)) {
+            const stat = fs.statSync(keyPath);
+            if (stat.isDirectory()) {
+                console.error("❌ Error: .originvault-encryption-key is a directory, not a file");
+                console.error("Removing the directory to fix this issue...");
+                fs.rmdirSync(keyPath);
+                // Now treat it as if the file doesn't exist
+            } else if (stat.isFile()) {
+                // It's a file, so read it
+                const { key } = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+                keyStore.privateEncryptionKey = key;
                 return;
             }
-            const { encryptionKey: inputKey } = await inquirer.prompt([
-                {
-                    type: 'password',
-                    name: 'encryptionKey',
-                    message: 'Enter an encryption key to encrypt the password:',
-                    mask: '*',
-                },
-            ]);
-            // Store the encryption key in the file
-            fs.writeFileSync(keyPath, JSON.stringify({ key: inputKey }), 'utf8');
-            keyStore.privateEncryptionKey = inputKey;
-            keyStore.encryptionKeyFilePath = keyPath;
-        } else {
-            const { key } = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
-            keyStore.privateEncryptionKey = key;
         }
+        
+        // File doesn't exist or was a directory that we removed
+        if(process.env.ENCRYPTION_KEY) {
+            keyStore.privateEncryptionKey = process.env.ENCRYPTION_KEY;
+            keyStore.encryptionKeyFilePath = keyPath;
+            return;
+        }
+        
+        const { encryptionKey: inputKey } = await inquirer.prompt([
+            {
+                type: 'password',
+                name: 'encryptionKey',
+                message: 'Enter an encryption key to encrypt the password:',
+                mask: '*',
+            },
+        ]);
+        
+        // Store the encryption key in the file
+        fs.writeFileSync(keyPath, JSON.stringify({ key: inputKey }), 'utf8');
+        keyStore.privateEncryptionKey = inputKey;
+        keyStore.encryptionKeyFilePath = keyPath;
+        
     } catch (error) {
         console.error("❌ Error initializing encryption key:", error);
         throw error;
@@ -63,6 +83,12 @@ export async function getEncryptionKey(): Promise<string> {
     return keyStore.privateEncryptionKey;
 }
 
+export async function storeEncryptionKey(key: string) {
+    await initializeEncryptionKey();
+    keyStore.privateEncryptionKey = key;
+    fs.writeFileSync(keyStore.encryptionKeyFilePath, JSON.stringify({ key }));
+}
+
 // Ensure the keyring is initialized
 export async function ensureKeyring(): Promise<Keyring> {
     await initializeEncryptionKey();
@@ -72,10 +98,22 @@ export async function ensureKeyring(): Promise<Keyring> {
         keyring = new Keyring({ type: 'ed25519' });
 
         if (fs.existsSync(KEYRING_FILE)) {
-            const keys = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
-            keys?.forEach((key: any) => {
-                keyring?.addFromJson(key);
-            });
+            const stat = fs.statSync(KEYRING_FILE);
+            if (stat.isDirectory()) {
+                console.error("❌ Error: .originvault-cheqd-did-keyring.json is a directory, not a file");
+                console.error("Removing the directory to fix this issue...");
+                fs.rmdirSync(KEYRING_FILE);
+            } else if (stat.isFile()) {
+                try {
+                    const keys = JSON.parse(fs.readFileSync(KEYRING_FILE, 'utf8'));
+                    keys?.forEach((key: any) => {
+                        keyring?.addFromJson(key);
+                    });
+                } catch (error) {
+                    console.error("❌ Error reading keyring file:", error);
+                    // Continue with empty keyring
+                }
+            }
         }
     }
     return keyring;
@@ -118,15 +156,47 @@ export const getVerifiedAuthentication = async (did: string, agent?: IOVAgent, k
     return verifiedAuthentication;
 }
 
-export const getPublicKeyMultibase = async (did: string): Promise<string | undefined> => {
-    const verifiedAuthentication = await getVerifiedAuthentication(did);
+function jwkToMultibase(jwk: { kty?: string; crv?: string; x?: string }) {
+    if (!jwk.kty || !jwk.crv || !jwk.x || jwk.kty !== 'OKP' || jwk.crv !== 'Ed25519') {
+        throw new Error('Only Ed25519 JWK keys are supported');
+    }
+    
+    // Convert base64url to raw bytes
+    const xBytes = Buffer.from(jwk.x, 'base64url');
+    
+    // Create multicodec buffer with Ed25519 prefix
+    const multicodec = new Uint8Array(MULTICODEC_ED25519_HEADER.length + xBytes.length);
+    multicodec.set(MULTICODEC_ED25519_HEADER);
+    multicodec.set(xBytes, MULTICODEC_ED25519_HEADER.length);
+    
+    // Encode with base58btc
+    return base58btc.encode(multicodec);
+}
+
+export const getPublicKeyMultibase = async (did: string, agent?: IOVAgent): Promise<string | undefined> => {
+    const verifiedAuthentication = await getVerifiedAuthentication(did, agent);
     if (!verifiedAuthentication) {
         return undefined;
     }
-    const publicKeyMultibase = verifiedAuthentication.publicKeyMultibase;
-    return publicKeyMultibase;
-}
 
+    // Handle Ed25519VerificationKey2020 format
+    if (verifiedAuthentication.publicKeyMultibase) {
+        return verifiedAuthentication.publicKeyMultibase;
+    }
+    
+    // Handle JsonWebKey2020 format
+    if (verifiedAuthentication.type === 'JsonWebKey2020' && verifiedAuthentication.publicKeyJwk) {
+        try {
+            return jwkToMultibase(verifiedAuthentication.publicKeyJwk);
+        } catch (error) {
+            console.error('❌ Error converting JWK to multibase:', error);
+            return undefined;
+        }
+    }
+
+    console.error('❌ Unsupported verification method type:', verifiedAuthentication.type);
+    return undefined;
+}
 
 export async function getPrivateKeyForPrimaryDID(password: string) {
     await ensureKeyring();
@@ -134,7 +204,7 @@ export async function getPrivateKeyForPrimaryDID(password: string) {
     const { encryptedPrivateKey } = JSON.parse(storedData);
     if(!encryptedPrivateKey) return false;
 
-    const privateKey = decryptPrivateKey(encryptedPrivateKey, password);
+    const privateKey = await decryptPrivateKeyLegacy(encryptedPrivateKey, password);
     if (!privateKey) {
         console.error("❌ Failed to decrypt private key");
         return false;
@@ -143,7 +213,7 @@ export async function getPrivateKeyForPrimaryDID(password: string) {
     return privateKey;
 }
 
-export async function storePrivateKey(keyName: string, privateKey: Uint8Array, kid: string): Promise<void> {
+export async function storePrivateKey(keyName: string, privateKey: Uint8Array, kid: string, password?: string): Promise<void> {
     try {
         // Check the length of the private key
         if (privateKey.length === 64) {
@@ -152,6 +222,22 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array, k
             throw new Error("Invalid private key length. Expected 32 bytes or 64 bytes.");
         }
 
+        // Use secure key storage if password is provided
+        if (password) {
+            const secureStorage = SecureKeyStorage.getInstance();
+            const privateKeyHex = Buffer.from(privateKey).toString('hex');
+            
+            // Generate public key from private key
+            const publicKey = await ed25519.getPublicKey(privateKey);
+            const publicKeyHex = Buffer.from(publicKey).toString('hex');
+            
+            await secureStorage.storeKey(kid, keyName, privateKeyHex, publicKeyHex, password);
+            console.log(`✅ Securely stored key ${kid} for DID ${keyName}`);
+            return;
+        }
+
+        // Fallback to legacy storage (deprecated - for backward compatibility)
+        console.warn('⚠️  Using legacy key storage - consider providing a password for secure storage');
         const kr = await ensureKeyring();
 
         const pair = kr.addFromSeed(privateKey, { keyName, isPrimary: false, kid });
@@ -171,8 +257,24 @@ export async function storePrivateKey(keyName: string, privateKey: Uint8Array, k
     }
 }
 
-export async function retrievePrivateKey(keyName: string): Promise<Uint8Array | undefined> {
+export async function retrievePrivateKey(keyName: string, password?: string): Promise<Uint8Array | undefined> {
     try {
+        // Try secure storage first if password is provided
+        if (password) {
+            const secureStorage = SecureKeyStorage.getInstance();
+            const keys = await secureStorage.listKeys();
+            const keyEntry = keys.find(k => k.did === keyName);
+            
+            if (keyEntry) {
+                const keyData = await secureStorage.retrieveKey(keyEntry.keyId, password);
+                if (keyData) {
+                    return Buffer.from(keyData.privateKeyHex, 'hex');
+                }
+            }
+        }
+
+        // Fallback to legacy storage
+        console.warn('⚠️  Using legacy key retrieval - consider providing a password for secure storage');
         const kr = await ensureKeyring();
         const pairs = kr.getPairs().map(pair => pair.toJson());
         const pair = pairs.find(p => p.meta.keyName === keyName);
@@ -283,7 +385,7 @@ export async function getPrimaryVC(): Promise<VerifiableCredential | null> {
     }
 }
 
-export function getStoredPassword(): string | null {
+export async function getStoredPassword(): Promise<string | null> {
     ensurePasswordFileExists();
     const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
     const encryptedPassword = JSON.parse(fs.readFileSync(passwordFilePath, 'utf8').trim());
@@ -293,7 +395,7 @@ export function getStoredPassword(): string | null {
     }
 
     try {
-        return decryptPrivateKey(encryptedPassword, process.env.ENCRYPTION_KEY || '');
+        return await decryptPrivateKeyLegacy(encryptedPassword, process.env.ENCRYPTION_KEY || '');
     } catch (error) {
         console.error(`❌ Error retrieving stored password: ${error}`);
         return null;
@@ -312,6 +414,7 @@ export function hexToBase64(hex: string): string {
 // ✅ Ensure the password file exists
 function ensurePasswordFileExists() {
     const passwordFilePath = path.join(os.homedir(), '.encrypted-password');
+    console.log("Getting stored password", passwordFilePath);
     if (!fs.existsSync(passwordFilePath)) {
         fs.writeFileSync(passwordFilePath, JSON.stringify("")); // Create an empty password file
     }

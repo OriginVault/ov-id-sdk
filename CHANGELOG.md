@@ -1,5 +1,28 @@
 ## Change Log
 
+## v0.0.17
+- [feat]: Adds `cheqdTestnetProvider` to each agent store.
+- [fix]: Fixes `importDID` to use the correct provider.
+- [fix]: Fixes `createDID` to use the correct provider.
+
+## v0.0.16
+- [fix]: Adds back in 'read-package-json-fast' dependency.
+
+## v0.0.15  
+- [fix]: Add missing `ignore` dependency.
+- [chore]: Upgrade out of date dependencies.
+- [fix]: Removes `@verida` dependencies.
+
+## v0.0.14
+- [chore]: Upgrades `@cheqd/did-provider-cheqd` to v4.5.2.
+- [chore]: Cleans up dependencies.
+
+## v0.0.13
+- [feat]: Adds `createDIDLinkedExecutable` function to the package.
+
+## v0.0.12
+ - [fix]: Fixes `privateKeyStore` imports from specific agents.
+
 ## v0.0.11
 - [feat]: Adds `createDID` and `importDID` functions to the package.
 - [feat]: Adds `sample.env` file to the package.
